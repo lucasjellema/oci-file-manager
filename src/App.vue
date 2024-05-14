@@ -1,6 +1,6 @@
 <script setup>
 
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
@@ -36,27 +36,55 @@ const submitData = () => {
   fileInput.value = ''
 }
 
+const expandedFolders = computed(() => {
+  return filesStore.files.filter(file => file.isFolder && file.isExpanded).map(file => file.name)
+})
+
+const expandFolder = (folder) => {
+  folder.isExpanded = !folder.isExpanded
+}
+
+const handleFileUpload = async (event) => {
+  const files = event.target.files;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    console.log(file.name, file.type, file.size, file.lastModified);
+  }
+}
+
 </script>
 
 <template>
-  <div>
 
-    <ul>
-      <li v-for="file in  filesStore.files ">
-        <span v-if="file.isFolder">+{{ file.name }}</span>
-        <div v-else>
-          <span v-if="file.folderName">&nbsp;&nbsp;&nbsp;&nbsp;</span>
-          <a :href="filesStore.PAR + file.fullname">{{ file.name }}</a>
-          <img :src="filesStore.PAR + file.fullname" v-if="file.name.toLowerCase().endsWith('.jpg')"
-            style="height: 50px;" />
+  <v-app>
+    <v-app-bar app>
+      <v-toolbar-title>OCI File Manager (aka The Bucket Browser)
+      </v-toolbar-title>
+      <v-img src="/app-bar-background-conclusion.jpg" height="80"></v-img>
+    </v-app-bar>
+    <v-main>
+      <div>
+        <div v-for="file in  filesStore.files ">
+          <span :title="'click to ' + (file.isExpanded ? 'collapse' : 'expand')" v-if="file.isFolder"
+            @click="expandFolder(file)">{{ file.isExpanded ? '▼' : '▶' }}{{
+          file.name }}</span>
+          <div v-if="!file.isFolder && (!file.folderName || expandedFolders.includes(file.folderName))">
+            <span v-if="file.folderName">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            <a :href="filesStore.PAR + file.fullname">{{ file.name }}</a>
+            <img :src="filesStore.PAR + file.fullname" v-if="file.name.toLowerCase().endsWith('.jpg')"
+              style="height: 50px;" />
+          </div>
         </div>
-      </li>
-    </ul>
-    <br />
-    <h2>Upload File</h2>
-    <label for="uploadedFile">Upload a file:</label>
-    <input type="file" id="uploadedFile" accept="*/*" multiple>
-    <br /><br />
-    <button type="button" @click="submitData()">Send file to Bucket</button>
-  </div>
+
+        <br />
+        <h2>Upload File</h2>
+        <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
+          :multiple="true"></v-file-input>
+        <br /><br />
+
+        <v-btn @click="submitData" prepend-icon="mdi-upload-box">Send file(s) to Bucket</v-btn>
+      </div>
+    </v-main>
+  </v-app>
+
 </template>
