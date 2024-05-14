@@ -15,5 +15,27 @@ export const useFilesStore = defineStore('filesStore', () => {
       })
   }
 
-  return { files, refreshFiles }
+const submitBlob = (blob, filename) => {
+    const fetchOptions = {
+        method: 'PUT',
+        body: blob,
+    };
+
+    fetch(PAR+filename, fetchOptions)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.status;
+        })
+        .then(data => {
+            console.log('Success:', data);
+            refreshFiles()
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+  
+  return { files, refreshFiles, PAR, submitBlob }
 })
