@@ -11,5 +11,9 @@ onMounted(() => {
 </script>
 
 <template>
-  {{ filesStore.files }}
+  <ul>
+    <li v-for="file in filesStore.files">
+      {{ file }}
+    </li>
+  </ul>
 </template>

@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { useFilesStore } from "./stores/filesStore";
+import { useFilesStore } from "../stores/filesStore";
 const filesStore = useFilesStore()
 
 const onMounted = () => {

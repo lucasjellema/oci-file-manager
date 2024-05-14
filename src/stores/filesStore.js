@@ -11,7 +11,7 @@ export const useFilesStore = defineStore('filesStore', () => {
     fetch(PAR, { method: 'GET' })
       .then(response => response.json())
       .then(data => {
-        files.value = data
+        files.value = data.objects
       })
   }
 
