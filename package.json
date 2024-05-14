@@ -11,10 +11,13 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "jszip": "^3.10.1",
     "pinia": "^2.1.7",
+    "primevue": "^3.52.0",
     "vue": "^3.4.21",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.3.0",
+    "vuetify": "^3.6.0-beta.0.0"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.8.0",
