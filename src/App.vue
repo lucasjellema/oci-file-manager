@@ -2,6 +2,9 @@
 
 import { onMounted } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
+
+import JSZip from 'jszip';
+
 const filesStore = useFilesStore()
 
 onMounted(() => {
@@ -15,7 +18,19 @@ const submitData = () => {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (file) {
-      filesStore.submitBlob(file, file.name)
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        const zip = new JSZip();
+        zip.loadAsync(file).then(async (contents) => {
+          const files = Object.values(contents.files);
+          for (const file of files) {
+            const blob = await zip.file(file.name).async('blob')
+            const relativePath = file.dir ? file.dir + '/' + file.name : file.name
+            filesStore.submitBlob(blob, relativePath)
+          }
+        })
+      } else {
+        filesStore.submitBlob(file, file.name)
+      }
     }
   }
   fileInput.value = ''
@@ -25,6 +40,7 @@ const submitData = () => {
 
 <template>
   <div>
+
     <ul>
       <li v-for="file in  filesStore.files ">
         <span v-if="file.isFolder">+{{ file.name }}</span>
