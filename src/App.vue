@@ -5,9 +5,16 @@ import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
 
+import Tree from 'primevue/tree';
+
 const filesStore = useFilesStore()
 const targetFolder = ref(null)
 const expandZipfiles = ref(false)
+const selectedKey = ref(null);
+
+const filesTree = computed(() => {
+  return filesStore.getFilesTree()
+})
 
 onMounted(() => {
   filesStore.refreshFiles()
@@ -54,6 +61,10 @@ const handleFileUpload = async (event) => {
   }
 }
 
+const onNodeHover = (event) => {
+  console.log(event)
+}
+
 </script>
 
 <template>
@@ -68,18 +79,21 @@ const handleFileUpload = async (event) => {
       <v-container fluid>
         <v-row>
           <v-col cols="6">
-            <div v-for="file in  filesStore.files ">
-              <span :title="'click to ' + (file.isExpanded ? 'collapse' : 'expand')" v-if="file.isFolder"
-                @click="expandFolder(file)">{{ file.isExpanded ? '▼' : '▶' }}{{
-              file.name }}</span>
-              <div v-if="!file.isFolder && (!file.folderName || expandedFolders.includes(file.folderName))">
-                <span v-if="file.folderName">&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                <a :href="filesStore.PAR + file.fullname">{{ file.name }}</a>
 
-                <v-img height="50" :src="filesStore.PAR + file.fullname" class="thumbnail"
-                  v-if="file.name.toLowerCase().endsWith('.jpg')"></v-img>
-              </div>
-            </div>
+            <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
+              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="multiple" :filter="true"
+              filterPlaceholder="Enter search term">
+              <template #default="slotProps">
+                <b>{{ slotProps.node.label }}</b>
+              </template>
+              <template #file="slotProps">
+                <a :href="filesStore.PAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
+                  class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
+                <v-img height="50" :src="filesStore.PAR + slotProps.node.data" class="thumbnail"
+                  v-if="slotProps.node.data.toLowerCase().endsWith('.jpg')"></v-img>
+              </template>
+
+            </Tree>
           </v-col>
           <v-col cols="4" offset="1" mr="10">
             <h2>Upload File</h2>

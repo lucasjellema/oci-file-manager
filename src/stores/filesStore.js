@@ -11,11 +11,13 @@ export const useFilesStore = defineStore('filesStore', () => {
     fetch(PAR, { method: 'GET' })
       .then(response => response.json())
       .then(data => {
+        bucketContents.value = data.objects
         processFileObjects(data.objects)
       })
   }
 
   const foldersInBucket = ref([])
+  const bucketContents = ref([])
 
   const processFileObjects = (fileObjects) => {
     const filesAndFolders = []
@@ -45,6 +47,65 @@ export const useFilesStore = defineStore('filesStore', () => {
     files.value = filesAndFolders
   }
 
+  const getFilesTree = () => {
+    const treeData = []
+    for (const folderName of foldersInBucket.value.sort()) {
+      const folderNode = {
+        key: folderName,
+        label: folderName,
+        data: folderName,
+        icon: 'mdi mdi-folder-outline',
+        styleClass: `treekey|folder|${folderName}`,
+        nodeType: 'folder',
+        type: 'folder',
+        selectable: true,
+        children: []
+      }
+      treeData.push(folderNode)
+      // find all folders and files in this folder
+      for (const fileObject of bucketContents.value) {
+        if (fileObject.name.includes('/')) {
+          const folder = fileObject.name.split('/')[0]
+          if (folder == folderName) {
+            const fileNode = {
+              key: fileObject.name.split('/')[1],
+              label: fileObject.name.split('/')[1],
+              data: fileObject.name,
+              icon: 'mdi mdi-file-outline',
+              styleClass: `treekey|file|${fileObject.name}`,
+              nodeType: 'file',
+              type: 'file',
+              selectable: true,
+              children: []
+            }
+            folderNode.children.push(fileNode)
+          }
+        }
+      }
+    }
+    // find all files that are not in a folder
+    bucketContents.value.sort((a, b) => a.name.localeCompare(b.name))
+    for (const fileObject of bucketContents.value) {
+      if (fileObject.name.includes('/')) {
+        //        filesAndFolders.push({ isFolder: false, name: fileObject.name.split('/')[1], folderName: fileObject.name.split('/')[0], fullname: fileObject.name })
+      } else {
+        const fileNode = {
+          key: fileObject.name,
+          label: fileObject.name,
+          data: fileObject.name,
+          icon: 'mdi mdi-file-outline',
+          styleClass: `treekey|file|${fileObject.name}`,
+          nodeType: 'file',
+          type: 'file',
+          selectable: true,
+          children: []
+        }
+        treeData.push(fileNode)
+      }
+    }
+    return treeData
+  }
+
   const submitBlob = (blob, filename) => {
     const fetchOptions = {
       method: 'PUT',
@@ -67,5 +128,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { files, refreshFiles, PAR, submitBlob, foldersInBucket }
+  return { files, refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree }
 })
