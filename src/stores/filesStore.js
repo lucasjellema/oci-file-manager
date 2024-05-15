@@ -15,6 +15,8 @@ export const useFilesStore = defineStore('filesStore', () => {
       })
   }
 
+  const foldersInBucket = ref([])
+
   const processFileObjects = (fileObjects) => {
     const filesAndFolders = []
     // if a fileObject name contains a slash, then the text before the slash is a folder name ; for now only one level of nesting is supported
@@ -27,7 +29,7 @@ export const useFilesStore = defineStore('filesStore', () => {
         }
       }
     })
-
+    foldersInBucket.value = folderNames
     for (const folderName of folderNames.sort()) {
       filesAndFolders.push({ isFolder: true, isExpanded: false, name: folderName })
     }
@@ -65,5 +67,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { files, refreshFiles, PAR, submitBlob }
+  return { files, refreshFiles, PAR, submitBlob, foldersInBucket }
 })
