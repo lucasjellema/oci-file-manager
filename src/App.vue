@@ -1,6 +1,6 @@
 <script setup>
 
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
@@ -13,8 +13,15 @@ const targetFolder = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
 
-const qrCodeToggle = ref(false)
+const qrcodeFile = ref(null)
 
+//const drawer = ref(true)
+const bucketPAR = ref(null)
+
+// when bucketPAR changes, inform filestore to refresh
+watch(bucketPAR, () => {
+  filesStore.setPAR(bucketPAR.value)
+})
 const filesTree = computed(() => {
   return filesStore.getFilesTree()
 })
@@ -79,6 +86,7 @@ const handleFileUpload = async (event) => {
 const nodeSelect = (node) => {
   if (node.nodeType === 'file') {
     const url = filesStore.PAR + node.data
+    qrcodeFile.value = node.data
     renderQRCode(url)
   }
 }
@@ -87,6 +95,8 @@ const nodeUnselect = (node) => {
   //hide qrcode
   const canvas = document.getElementById('canvas')
   canvas.width = canvas.width; // clears the canvas content
+  qrcodeFile.value = null
+
 }
 </script>
 
@@ -97,6 +107,7 @@ const nodeUnselect = (node) => {
       <v-toolbar-title>OCI File Manager (aka The Bucket Browser)
       </v-toolbar-title>
       <v-img src="/app-bar-background-conclusion.jpg" height="80"></v-img>
+
     </v-app-bar>
     <v-main>
       <v-container fluid>
@@ -115,8 +126,9 @@ const nodeUnselect = (node) => {
                 <v-img height="50" :src="filesStore.PAR + slotProps.node.data" class="thumbnail"
                   v-if="slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png')"></v-img>
               </template>
-
             </Tree>
+            <v-divider class="my-10"></v-divider>
+            <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
             <canvas id="canvas"></canvas>
           </v-col>
           <v-col cols=" 4" offset="1" mr="10">
@@ -130,15 +142,23 @@ const nodeUnselect = (node) => {
                   <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
                     hint="Optionally select or define a folder to upload the file(s) to"
                     append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
-
                     <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
-
+                    <v-img src="mdi-folder-outline"></v-img>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
 
           </v-col>
         </v-row>
+        <v-navigation-drawer location="right" width="500" rail-width="100" expand-on-hover rail>
+          <v-img src="mdi-folder-outline"></v-img>
+          <v-icon large>
+            mdi-pail-outline
+          </v-icon>
+          <h2>OCI Bucket</h2>
+          <v-text-field v-model="bucketPAR" density="compact" label="Pre Authenticated Request"
+            hint="enter the PAR for a Bucket in OCI Object Storage" single-line hide-details></v-text-field>
+        </v-navigation-drawer>
       </v-container>
     </v-main>
   </v-app>

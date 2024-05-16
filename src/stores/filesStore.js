@@ -3,7 +3,12 @@ import { defineStore } from 'pinia'
 
 
 export const useFilesStore = defineStore('filesStore', () => {
-  const PAR = 'https://objectstorage.us-ashburn-1.oraclecloud.com/p/kwEUouf1vfoUJA6gDR_urH6eIebGB1RPiU9V4lePAjYN_-guecBpDCDaDJFoIIwC/n/idtwlqf2hanz/b/TwoDrive/o/'
+  let PAR = 'https://objectstorage.us-ashburn-1.oraclecloud.com/p/kwEUouf1vfoUJA6gDR_urH6eIebGB1RPiU9V4lePAjYN_-guecBpDCDaDJFoIIwC/n/idtwlqf2hanz/b/TwoDrive/o/'
+
+  const setPAR = (newPAR) => {
+    PAR = newPAR
+    refreshFiles()
+  }
 
   const refreshFiles = () => {
 
@@ -268,5 +273,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree }
+  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR }
 })
