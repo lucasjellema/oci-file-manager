@@ -120,16 +120,23 @@ const nodeUnselect = (node) => {
             <canvas id="canvas"></canvas>
           </v-col>
           <v-col cols=" 4" offset="1" mr="10">
-            <h2>Upload File</h2>
-            <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
-              :multiple="true"></v-file-input>
-            <v-checkbox v-model="expandZipfiles" label="Expand zipfile(s)" hint="Submit files in zip archive one by one"
-              class="ma-10 mt-2 mb-5"></v-checkbox>
-            <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
-              hint="Optionally select or define a folder to upload the file(s) to" append-icon="mdi-folder-arrow-up"
-              persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
+            <v-expansion-panels :multiple="false">
+              <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline">
+                <v-expansion-panel-text>
+                  <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
+                    :multiple="true"></v-file-input>
+                  <v-checkbox v-model="expandZipfiles" label="Expand zipfile(s)"
+                    hint="Submit files in zip archive one by one" class="ma-10 mt-2 mb-5"></v-checkbox>
+                  <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
+                    hint="Optionally select or define a folder to upload the file(s) to"
+                    append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
 
-              <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
+                    <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
+
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
           </v-col>
         </v-row>
       </v-container>
