@@ -85,7 +85,7 @@ const handleFileUpload = async (event) => {
 
 const nodeSelect = (node) => {
   if (node.nodeType === 'file') {
-    const url = filesStore.PAR + node.data
+    const url = filesStore.PAR.value + node.data
     qrcodeFile.value = node.data
     renderQRCode(url)
   }
@@ -121,9 +121,9 @@ const nodeUnselect = (node) => {
                 <b>{{ slotProps.node.label }}</b>
               </template>
               <template #file="slotProps">
-                <a :href="filesStore.PAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
+                <a :href="bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
                   class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
-                <v-img height="50" :src="filesStore.PAR + slotProps.node.data" class="thumbnail"
+                <v-img height="50" :src="bucketPAR + slotProps.node.data" class="thumbnail"
                   v-if="slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png')"></v-img>
               </template>
             </Tree>
@@ -150,7 +150,7 @@ const nodeUnselect = (node) => {
 
           </v-col>
         </v-row>
-        <v-navigation-drawer location="right" width="500" rail-width="100" expand-on-hover rail>
+        <v-navigation-drawer location="right" width="700" rail-width="100" expand-on-hover rail>
           <v-img src="mdi-folder-outline"></v-img>
           <v-icon large>
             mdi-pail-outline

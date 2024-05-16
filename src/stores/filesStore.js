@@ -3,16 +3,16 @@ import { defineStore } from 'pinia'
 
 
 export const useFilesStore = defineStore('filesStore', () => {
-  let PAR = 'https://objectstorage.us-ashburn-1.oraclecloud.com/p/kwEUouf1vfoUJA6gDR_urH6eIebGB1RPiU9V4lePAjYN_-guecBpDCDaDJFoIIwC/n/idtwlqf2hanz/b/TwoDrive/o/'
+  const PAR = ref(null)
 
   const setPAR = (newPAR) => {
-    PAR = newPAR
+    PAR.value = newPAR
     refreshFiles()
   }
 
   const refreshFiles = () => {
 
-    fetch(PAR, { method: 'GET' })
+    fetch(PAR.value, { method: 'GET' })
       .then(response => response.json())
       .then(data => {
         bucketContents.value = data.objects
@@ -257,7 +257,7 @@ export const useFilesStore = defineStore('filesStore', () => {
       body: blob,
     };
 
-    fetch(PAR + filename, fetchOptions)
+    fetch(PAR.value + filename, fetchOptions)
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok ' + response.statusText);
