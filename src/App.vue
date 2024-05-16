@@ -4,7 +4,7 @@ import { onMounted, computed, ref } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
-
+import QRCode from 'qrcode'
 
 import Tree from 'primevue/tree';
 
@@ -12,6 +12,8 @@ const filesStore = useFilesStore()
 const targetFolder = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
+
+const qrCodeToggle = ref(false)
 
 const filesTree = computed(() => {
   return filesStore.getFilesTree()
@@ -21,6 +23,24 @@ onMounted(() => {
   filesStore.refreshFiles()
 })
 
+const renderQRCode = (myurl) => {
+  var opts = {
+    errorCorrectionLevel: 'H',
+    type: 'image/jpeg',
+    quality: 0.3,
+    margin: 1,
+    scale: 5,
+    color: {
+      dark: "#010599FF",
+      light: "#FFFFFF"
+    }
+  }
+  var canvas = document.getElementById('canvas')
+
+  QRCode.toCanvas(canvas, myurl, opts, function (error) {
+    if (error) console.error(error)
+  })
+}
 
 const submitData = () => {
   const fileInput = document.getElementById('uploadedFile');
@@ -56,6 +76,18 @@ const handleFileUpload = async (event) => {
   }
 }
 
+const nodeSelect = (node) => {
+  if (node.nodeType === 'file') {
+    const url = filesStore.PAR + node.data
+    renderQRCode(url)
+  }
+}
+
+const nodeUnselect = (node) => {
+  //hide qrcode
+  const canvas = document.getElementById('canvas')
+  canvas.width = canvas.width; // clears the canvas content
+}
 </script>
 
 <template>
@@ -72,8 +104,8 @@ const handleFileUpload = async (event) => {
           <v-col cols="6">
 
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
-              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="multiple" :filter="true"
-              filterPlaceholder="Enter search term">
+              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="single" :filter="true"
+              filterPlaceholder="Enter search term" @node-select="nodeSelect" @node-unselect="nodeUnselect">
               <template #default="slotProps">
                 <b>{{ slotProps.node.label }}</b>
               </template>
@@ -81,11 +113,11 @@ const handleFileUpload = async (event) => {
                 <a :href="filesStore.PAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
                   class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
                 <v-img height="50" :src="filesStore.PAR + slotProps.node.data" class="thumbnail"
-                  v-if="slotProps.node.data.toLowerCase().endsWith('.jpg')"></v-img>
+                  v-if="slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png')"></v-img>
               </template>
 
             </Tree>
-
+            <canvas id="canvas"></canvas>
           </v-col>
           <v-col cols=" 4" offset="1" mr="10">
             <h2>Upload File</h2>
@@ -108,7 +140,7 @@ const handleFileUpload = async (event) => {
 <style>
 /*change the number below to scale to the appropriate size*/
 .thumbnail:hover {
-  transform: scale(3);
+  transform: scale(5);
   z-index: 900;
 }
 
