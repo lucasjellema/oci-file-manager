@@ -185,7 +185,7 @@ export const useFilesStore = defineStore('filesStore', () => {
           styleClass: `treekey|folder|${childFolder.name}`,
           nodeType: 'folder',
           type: 'folder',
-          selectable: true,
+          selectable: false,
           children: []
         }
         parentNode.children.push(folderNode)
@@ -220,7 +220,7 @@ export const useFilesStore = defineStore('filesStore', () => {
           styleClass: `treekey|folder|${folder.name}`,
           nodeType: 'folder',
           type: 'folder',
-          selectable: true,
+          selectable: false,
           children: []
         }
         processFolder(folder, folderNode)
