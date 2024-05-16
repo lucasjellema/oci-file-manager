@@ -5,6 +5,7 @@ import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
 
+
 import Tree from 'primevue/tree';
 
 const filesStore = useFilesStore()
@@ -45,24 +46,14 @@ const submitData = () => {
   fileInput.value = ''
 }
 
-const expandedFolders = computed(() => {
-  return filesStore.files.filter(file => file.isFolder && file.isExpanded).map(file => file.name)
-})
-
-const expandFolder = (folder) => {
-  folder.isExpanded = !folder.isExpanded
-}
 
 const handleFileUpload = async (event) => {
   const files = event.target.files;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     console.log(file.name, file.type, file.size, file.lastModified);
-  }
-}
 
-const onNodeHover = (event) => {
-  console.log(event)
+  }
 }
 
 </script>
@@ -94,8 +85,9 @@ const onNodeHover = (event) => {
               </template>
 
             </Tree>
+
           </v-col>
-          <v-col cols="4" offset="1" mr="10">
+          <v-col cols=" 4" offset="1" mr="10">
             <h2>Upload File</h2>
             <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
               :multiple="true"></v-file-input>
@@ -118,5 +110,21 @@ const onNodeHover = (event) => {
 .thumbnail:hover {
   transform: scale(3);
   z-index: 900;
+}
+
+/* this class is defined in PrimeVue tree; it gets overridden by a Vuetify style; this next definition corrects this override to marke
+   sure that child nodes are indented properly 
+*/
+.p-treenode-children {
+  padding-left: 1rem !important;
+}
+
+.p-tree-filter-container .p-tree-filter {
+  padding-top: 0px;
+  padding-right: 1.125rem !important;
+  padding-bottom: 1.125rem !important;
+  padding-left: 1.125rem !important;
+  margin-top: 10px;
+
 }
 </style>
