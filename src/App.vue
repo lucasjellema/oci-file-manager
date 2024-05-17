@@ -165,7 +165,7 @@ const nodeUnselect = (node) => {
       <v-container fluid>
         <v-row>
           <v-col cols="6">
-
+            <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h2>
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
               class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="single" :filter="true"
               filterPlaceholder="Enter search term" @node-select="nodeSelect" @node-unselect="nodeUnselect">
@@ -232,18 +232,17 @@ const nodeUnselect = (node) => {
 
           </v-col>
         </v-row>
-        <v-navigation-drawer location="right" width="700" rail-width="100" expand-on-hover rail>
+        <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail>
           <v-img src="mdi-folder-outline"></v-img>
           <v-icon large>
             mdi-pail-outline
           </v-icon>
-          <h2>OCI Bucket</h2>
-          <h3 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h3>
+          <h2>OCI Buckets</h2>
           <v-divider class="my-10"></v-divider>
 
           <v-radio-group v-model="selectedBucket" row>
             <v-radio v-for="item in filesStore.rememberedBuckets" :key="item.bucketName" :label="item.label"
-              :value="item"></v-radio>
+              :value="item" :title="item.bucketName + ' - ' + item.description"></v-radio>
           </v-radio-group>
 
         </v-navigation-drawer>
