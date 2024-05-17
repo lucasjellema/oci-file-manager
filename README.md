@@ -9,8 +9,25 @@ The app shows a tree explorer for the folders and files in your bucket. The sear
 
 In the right side navigation area you will find radio buttons for all buckets you have added to the OCI File Manager. Choose the radio button for the bucket you want to explore.
 
+## Pre Authenticated Request for a Bucket
+
+This tool leverages the Pre Authenticated Request URL that allows direct GET and PUT access to the bucket - without any additional requirements for configuration of authorization. Anyone - or any tool - with the URL can get right to it. So be careful who you share it with.
+
+To create the PAR, open the OCI Console and navigate to the bucket in the Object Storage section.
+
+![](images/create-par.png)
+
+Click on Resources | Pre Authenticated requests. Then click on Create Pre Authenticated Request. Make sure that you select Bucket as the target, Pernmit object read and write as the access type and Enable Object Listing. Optionally edit the expiration date - the default is one week into the future. CLick on Create Pre Authenicated Request to save the PAR and get access to the URL.
+
+![](images/par-url.png)
+Copy one of the two URLs presented - both will do the job. This URL is the key for the OCI File Manager app to unlock access to the bucket and read its files and upload new contents.
+
+## Bucket Management
+
 The Bucket Management panel is used for adding, editing and removing buckets. The information on buckets is held in memory and is saved to the local storage in your browser for ease of future use.
 ![](images/bucket-editor.png) 
+
+You can add new buckets - provide the Pre Authtenicated Request URL and a label and optionally a description. Buckets can be edited and removed.
 
 ## Uploading files
 Files can be upload in the Upload File(s) panel. You can select one or more files from your device for uploading. If your uploading zip-files, you can specify if you want the zip file to be exploded during upload: every file in the archive is created as an individual entry in the bucket if you check the checkbox.
