@@ -13,10 +13,25 @@ const targetFolder = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
 
+const showImageThumbnails = ref(false)
+const showQRCode = ref(false)
 const qrcodeFile = ref(null)
 
 //const drawer = ref(true)
 const bucketPAR = ref(null)
+const bucketName = computed(() => {
+  // /b/website/o/
+  // find the substring that starts after /b/ and ends before /o
+  // return the substring
+  if (!bucketPAR.value) return null
+  const start = bucketPAR.value.indexOf('/b/') + 3
+  const end = bucketPAR.value.substring(start).indexOf('/o')
+  return bucketPAR.value.substring(start, start + end)
+})
+
+const clearRememberedPARs = () => {
+  filesStore.clearRememberedPARs()
+}
 
 // when bucketPAR changes, inform filestore to refresh
 watch(bucketPAR, () => {
@@ -94,7 +109,7 @@ const nodeSelect = (node) => {
 const nodeUnselect = (node) => {
   //hide qrcode
   const canvas = document.getElementById('canvas')
-  canvas.width = canvas.width; // clears the canvas content
+  if (canvas) canvas.width = canvas.width; // clears the canvas content
   qrcodeFile.value = null
 
 }
@@ -124,12 +139,14 @@ const nodeUnselect = (node) => {
                 <a :href="bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
                   class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
                 <v-img height="50" :src="bucketPAR + slotProps.node.data" class="thumbnail"
-                  v-if="slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png')"></v-img>
+                  v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
               </template>
             </Tree>
             <v-divider class="my-10"></v-divider>
-            <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
-            <canvas id="canvas"></canvas>
+            <div v-if="showQRCode">
+              <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
+              <canvas id="canvas"></canvas>
+            </div>
           </v-col>
           <v-col cols=" 4" offset="1" mr="10">
             <v-expansion-panels :multiple="false">
@@ -146,6 +163,15 @@ const nodeUnselect = (node) => {
                     <v-img src="mdi-folder-outline"></v-img>
                 </v-expansion-panel-text>
               </v-expansion-panel>
+              <v-expansion-panel title="Settings" collapse-icon="mdi-cog-outline" expand-icon="mdi-cog-outline">
+                <v-expansion-panel-text>
+                  <v-checkbox v-model="showImageThumbnails" label="Show Image Thumbnails"
+                    hint="Show thumbnail images in file tree for files of type jpg, gif, png"
+                    class="mt-2 "></v-checkbox>
+                  <v-checkbox v-model="showQRCode" label="Show QR Code for selected file"
+                    hint="Show a QR Code for downloading the file currently selected in the tree" class=""></v-checkbox>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
             </v-expansion-panels>
 
           </v-col>
@@ -156,8 +182,11 @@ const nodeUnselect = (node) => {
             mdi-pail-outline
           </v-icon>
           <h2>OCI Bucket</h2>
-          <v-text-field v-model="bucketPAR" density="compact" label="Pre Authenticated Request"
-            hint="enter the PAR for a Bucket in OCI Object Storage" single-line hide-details></v-text-field>
+          <h3>{{ bucketName }}</h3>
+          <v-divider class="my-10"></v-divider>
+          <v-combobox v-model="bucketPAR" :items="filesStore.getRememberedPARs()" label="Pre Authenticated Request"
+            hint="enter the PAR for a Bucket in OCI Object Storage" single-line hide-details></v-combobox>
+          <v-btn @click="clearRememberedPARs" prepend-icon="mdi-pail-off-outline" mt="30">Forget Buckets</v-btn>
         </v-navigation-drawer>
       </v-container>
     </v-main>

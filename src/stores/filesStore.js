@@ -4,11 +4,30 @@ import { defineStore } from 'pinia'
 
 export const useFilesStore = defineStore('filesStore', () => {
   const PAR = ref(null)
-
+  const localStorageKeyForRememberedPARs = 'rememberedPARs';
   const setPAR = (newPAR) => {
     PAR.value = newPAR
+    const rememberedPARs = getRememberedPARs()
+    if (!rememberedPARs.includes(newPAR)) {
+      rememberedPARs.push(newPAR)
+      localStorage.setItem(localStorageKeyForRememberedPARs, JSON.stringify(rememberedPARs));
+    }
     refreshFiles()
   }
+
+  const clearRememberedPARs = () => {
+    localStorage.removeItem(localStorageKeyForRememberedPARs)
+  }
+
+  const getRememberedPARs = () => {
+    const rememberedPARs = localStorage.getItem(localStorageKeyForRememberedPARs);
+    if (rememberedPARs) {
+      return JSON.parse(rememberedPARs);
+    } else {
+      return [];
+    }
+  }
+
 
   const refreshFiles = () => {
 
@@ -273,5 +292,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR }
+  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR, getRememberedPARs, clearRememberedPARs }
 })
