@@ -57,7 +57,6 @@ export const useFilesStore = defineStore('filesStore', () => {
 
   function createNestedStructure(paths) {
     const root = { name: "root", nestedFolders: [], files: [] };
-
     paths.forEach((path) => {
       const parts = path.split('/');
       addPath(root, parts, path);
@@ -78,9 +77,10 @@ export const useFilesStore = defineStore('filesStore', () => {
       if (!folder) {
         folder = { name: folderName, nestedFolders: [], files: [] };
         currentFolder.nestedFolders.push(folder);
-
+        // full path minus the part after the last slash
+        const folderPath = fullPath.split('/').slice(0, -1).join('/');
+        if (!foldersInBucket.value.includes(folderPath)) foldersInBucket.value.push(folderPath)
       }
-
       addPath(folder, parts.slice(1), fullPath);
     }
   }
@@ -111,104 +111,13 @@ export const useFilesStore = defineStore('filesStore', () => {
 
 
     })
-    foldersInBucket.value = folderNames.sort()
 
     const nestedStructure = createNestedStructure(fileObjects.map(fileObject => fileObject.name));
+    foldersInBucket.value = foldersInBucket.value.sort()
     filesAndFolders.value = nestedStructure
     console.log(JSON.stringify(nestedStructure, null, 2));
 
   }
-
-  const processFolderAndContents = (folderName) => {
-    console.log('processFolderAndContents' + folderName)
-
-    const folderNode = {
-      key: folderName + 'Child',
-      label: folderName.includes('/') ? folderName.split('/')[1] : folderName,
-      data: folderName,
-      icon: 'mdi mdi-folder-outline',
-      styleClass: `treekey|folder|${folderName}`,
-      nodeType: 'folder',
-      type: 'folder',
-      selectable: true,
-      children: []
-    }
-    // find all folders and files in this folder
-    for (const fileObject of bucketContents.value) {
-      if (fileObject.name.includes(folderName + '/')) { // something in this folder!
-        const folder = fileObject.name.substring(0, folderName.length)  // split(folderName + '/')[0]
-        if (folder == folderName) {
-          // check if part after foldername+/ contains another / in which case this entry is to be processed as (sub) folder 
-          const subfolder = fileObject.name.substring(folder.length + 1)
-          if (subfolder.includes('/')) {
-            console.log('subfolder ' + subfolder)
-            const pathToExplore = folderName + '/' + subfolder.split('/')[0]  // up to first / in subfolder
-            if (!foldersInBucket.value.includes(pathToExplore)) {
-              foldersInBucket.value.push(pathToExplore)
-              console.log('pathToExplore ' + pathToExplore)
-              folderNode.children.push(processFolderAndContents(pathToExplore))
-            }
-          } else {
-            const fileNode = {
-              key: subfolder,
-              label: subfolder,
-              data: subfolder,
-              icon: 'mdi mdi-file-outline',
-              styleClass: `treekey|file|${fileObject.name}`,
-              nodeType: 'file',
-              type: 'file',
-              selectable: true,
-              children: []
-            }
-            folderNode.children.push(fileNode)
-          }
-        }
-      }
-    }
-    const folderNodeChild = {
-      key: folderName + 'cild',
-      label: folderName.includes('/') ? folderName.split('/')[1] : folderName + "Child",
-      data: folderName,
-      icon: 'mdi mdi-folder-outline',
-      styleClass: `treekey|folder|${folderName}`,
-      nodeType: 'folder',
-      type: 'folder',
-      selectable: true,
-      children: []
-    }
-    folderNode.children.push(folderNodeChild)
-    return folderNode
-  }
-
-
-  const getFilesTree2 = () => {
-    const treeData = []
-    for (const folderName of foldersInBucket.value.filter(name => !name.includes('/')).sort()) { // root folders only
-      treeData.push(processFolderAndContents(folderName))
-    }
-    // find all files that are not in a folder
-    bucketContents.value.sort((a, b) => a.name.localeCompare(b.name))
-    for (const fileObject of bucketContents.value) {
-      if (fileObject.name.includes('/')) {
-        //        filesAndFolders.push({ isFolder: false, name: fileObject.name.split('/')[1], folderName: fileObject.name.split('/')[0], fullname: fileObject.name })
-      } else {
-        const fileNode = {
-          key: fileObject.name,
-          label: fileObject.name,
-          data: fileObject.name,
-          icon: 'mdi mdi-file-outline',
-          styleClass: `treekey|file|${fileObject.name}`,
-          nodeType: 'file',
-          type: 'file',
-          selectable: true,
-          children: []
-        }
-        treeData.push(fileNode)
-      }
-    }
-    return treeData
-  }
-
 
   const processFolder = (folder, parentNode) => {
     if (folder.nestedFolders)
@@ -226,6 +135,7 @@ export const useFilesStore = defineStore('filesStore', () => {
         }
         parentNode.children.push(folderNode)
         processFolder(childFolder, folderNode)
+
       }
     if (folder.files)
       for (const file of folder.files) {
@@ -261,6 +171,7 @@ export const useFilesStore = defineStore('filesStore', () => {
         }
         processFolder(folder, folderNode)
         treeData.push(folderNode)
+
       }
     if (filesAndFolders.value.files)
       for (const file of filesAndFolders.value.files) {
