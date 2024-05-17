@@ -5,27 +5,39 @@ import { defineStore } from 'pinia'
 export const useFilesStore = defineStore('filesStore', () => {
   const PAR = ref(null)
   const localStorageKeyForRememberedPARs = 'rememberedPARs';
+  const localStorageKeyForRememberedBuckets = 'rememberedBuckets';
+  const rememberedBuckets = ref([])
+
+  const initializeRememberedBuckets = () => {
+    const bucketsFromLocalStorage = localStorage.getItem(localStorageKeyForRememberedBuckets);
+    if (bucketsFromLocalStorage) {
+      rememberedBuckets.value = JSON.parse(bucketsFromLocalStorage);
+    }
+  }
+
+  initializeRememberedBuckets()
+
+  const saveBucket = (bucketName, bucketPAR, label, description) => {
+    const bucket = rememberedBuckets.value.find(bucket => bucket.bucketName === bucketName);
+    if (!bucket) {
+      rememberedBuckets.value.push({ bucketName, bucketPAR, label, description })
+    } else {
+      bucket.bucketPAR = bucketPAR
+      bucket.label = label
+      bucket.description = description
+    }
+    localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
+
+  }
+
+  const removeBucket = (bucketName) => {
+    rememberedBuckets.value = rememberedBuckets.value.filter(bucket => bucket.bucketName !== bucketName)
+    localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
+  }
+
   const setPAR = (newPAR) => {
     PAR.value = newPAR
-    const rememberedPARs = getRememberedPARs()
-    if (!rememberedPARs.includes(newPAR)) {
-      rememberedPARs.push(newPAR)
-      localStorage.setItem(localStorageKeyForRememberedPARs, JSON.stringify(rememberedPARs));
-    }
     refreshFiles()
-  }
-
-  const clearRememberedPARs = () => {
-    localStorage.removeItem(localStorageKeyForRememberedPARs)
-  }
-
-  const getRememberedPARs = () => {
-    const rememberedPARs = localStorage.getItem(localStorageKeyForRememberedPARs);
-    if (rememberedPARs) {
-      return JSON.parse(rememberedPARs);
-    } else {
-      return [];
-    }
   }
 
 
@@ -292,5 +304,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR, getRememberedPARs, clearRememberedPARs }
+  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket }
 })

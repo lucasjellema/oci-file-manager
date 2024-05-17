@@ -16,6 +16,9 @@ const selectedKey = ref(null);
 const showImageThumbnails = ref(false)
 const showQRCode = ref(false)
 const qrcodeFile = ref(null)
+const selectedBucket = ref(null)
+const bucketToEdit = ref(null)
+const showBucketEditorPopup = ref(false)
 
 //const drawer = ref(true)
 const bucketPAR = ref(null)
@@ -23,20 +26,54 @@ const bucketName = computed(() => {
   // /b/website/o/
   // find the substring that starts after /b/ and ends before /o
   // return the substring
-  if (!bucketPAR.value) return null
-  const start = bucketPAR.value.indexOf('/b/') + 3
-  const end = bucketPAR.value.substring(start).indexOf('/o')
-  return bucketPAR.value.substring(start, start + end)
+  if (!selectedBucket.value) return null
+
+  return extractBucketName(selectedBucket.value.bucketPAR)
 })
 
-const clearRememberedPARs = () => {
-  filesStore.clearRememberedPARs()
+const extractBucketName = (bucketPAR) => {
+  const start = bucketPAR.indexOf('/b/') + 3
+  const end = bucketPAR.substring(start).indexOf('/o')
+  return bucketPAR.substring(start, start + end)
 }
 
+const bucketHeaders = ref([
+  { title: 'Label', value: 'label' },
+  { title: 'Name', value: 'bucketName' },
+  { title: 'Actions', value: 'actions' }
+])
+
+
+const editBucket = (bucket, index) => {
+  //  filesStore.editBucket(item, index)
+  bucketToEdit.value = bucket
+  showBucketEditorPopup.value = true
+}
+const removeBucket = (bucket, index) => {
+  filesStore.removeBucket(bucket.bucketName)
+}
+
+const saveBucket = () => {
+  bucketToEdit.value.bucketName = extractBucketName(bucketToEdit.value.bucketPAR)
+  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description)
+  showBucketEditorPopup.value = false
+}
+
+const addAndEditBucket = () => {
+  bucketToEdit.value = {
+    bucketName: "", label: "New Bucket", description: "", bucketPAR: ""
+  }
+  showBucketEditorPopup.value = true
+}
+
+
+
 // when bucketPAR changes, inform filestore to refresh
-watch(bucketPAR, () => {
-  filesStore.setPAR(bucketPAR.value)
+watch(selectedBucket, () => {
+  filesStore.setPAR(selectedBucket.value.bucketPAR)
+  bucketPAR.value = selectedBucket.value.bucketPAR
 })
+
 const filesTree = computed(() => {
   return filesStore.getFilesTree()
 })
@@ -136,9 +173,9 @@ const nodeUnselect = (node) => {
                 <b>{{ slotProps.node.label }}</b>
               </template>
               <template #file="slotProps">
-                <a :href="bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
+                <a :href="selectedBucket.bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
                   class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
-                <v-img height="50" :src="bucketPAR + slotProps.node.data" class="thumbnail"
+                <v-img height="50" :src="selectedBucket.bucketPAR + slotProps.node.data" class="thumbnail"
                   v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
               </template>
             </Tree>
@@ -163,6 +200,25 @@ const nodeUnselect = (node) => {
                     <v-img src="mdi-folder-outline"></v-img>
                 </v-expansion-panel-text>
               </v-expansion-panel>
+              <v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
+                expand-icon="mdi-pail-outline">
+                <v-expansion-panel-text>
+
+                  <v-data-table :headers="bucketHeaders" :items="filesStore.rememberedBuckets" item-key="bucketName"
+                    class="elevation-1">
+                    <template v-slot:item.actions="{ item, index }">
+                      <v-icon small @click="editBucket(item, index)">
+                        mdi-pencil
+                      </v-icon>
+                      <v-icon small @click="removeBucket(item, index)">
+                        mdi-delete
+                      </v-icon>
+                    </template>
+                  </v-data-table>
+                  <v-btn prepend-icon="mdi-pail-plus-outline" @click="addAndEditBucket()" class="mt-4 mb-5">Add
+                    Bucket</v-btn>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
               <v-expansion-panel title="Settings" collapse-icon="mdi-cog-outline" expand-icon="mdi-cog-outline">
                 <v-expansion-panel-text>
                   <v-checkbox v-model="showImageThumbnails" label="Show Image Thumbnails"
@@ -182,16 +238,37 @@ const nodeUnselect = (node) => {
             mdi-pail-outline
           </v-icon>
           <h2>OCI Bucket</h2>
-          <h3>{{ bucketName }}</h3>
+          <h3 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h3>
           <v-divider class="my-10"></v-divider>
-          <v-combobox v-model="bucketPAR" :items="filesStore.getRememberedPARs()" label="Pre Authenticated Request"
-            hint="enter the PAR for a Bucket in OCI Object Storage" single-line hide-details></v-combobox>
-          <v-btn @click="clearRememberedPARs" prepend-icon="mdi-pail-off-outline" mt="30">Forget Buckets</v-btn>
+
+          <v-radio-group v-model="selectedBucket" row>
+            <v-radio v-for="item in filesStore.rememberedBuckets" :key="item.bucketName" :label="item.label"
+              :value="item"></v-radio>
+          </v-radio-group>
+
         </v-navigation-drawer>
       </v-container>
     </v-main>
   </v-app>
+  <v-dialog v-model="showBucketEditorPopup" max-width="800px">
 
+    <v-card>
+      <v-card-title>Bucket Editor</v-card-title>
+
+      <v-card-text>
+        <v-text-field v-model="bucketToEdit.label" label="Label"></v-text-field>
+        <v-text-field v-model="bucketToEdit.bucketPAR" label="Pre Authenticated Request URL"
+          hint="enter the PAR for a Bucket in OCI Object Storage (with at least read and list objects privileges)"></v-text-field>
+        <v-text-field v-model="bucketToEdit.description" label="Description"></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="blue darken-1" text @click="showBucketEditorPopup = false">Cancel</v-btn>
+        <v-btn color="blue darken-1" text @click="saveBucket">Save</v-btn>
+      </v-card-actions>
+    </v-card>
+
+  </v-dialog>
 </template>
 <style>
 /*change the number below to scale to the appropriate size*/
