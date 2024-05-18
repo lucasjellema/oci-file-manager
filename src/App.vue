@@ -12,6 +12,7 @@ const filesStore = useFilesStore()
 const targetFolder = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
+const expandedKeys = ref({});
 
 const showImageThumbnails = ref(false)
 const showQRCode = ref(false)
@@ -19,6 +20,12 @@ const qrcodeFile = ref(null)
 const selectedBucket = ref(null)
 const bucketToEdit = ref(null)
 const showBucketEditorPopup = ref(false)
+
+const downloadMultipleFilesAsZip = ref(false)
+
+const downloadZipfile = () => {
+  console.log('downloadZipfile')
+}
 
 //const drawer = ref(true)
 const bucketPAR = ref(null)
@@ -150,6 +157,28 @@ const nodeUnselect = (node) => {
   qrcodeFile.value = null
 
 }
+
+const expandAll = () => {
+  for (let node of filesTree.value) {
+    expandNode(node);
+  }
+
+  expandedKeys.value = { ...expandedKeys.value };
+};
+
+const collapseAll = () => {
+  expandedKeys.value = {};
+};
+
+const expandNode = (node) => {
+  if (node.children && node.children.length) {
+    expandedKeys.value[node.key] = true;
+
+    for (let child of node.children) {
+      expandNode(child);
+    }
+  }
+};
 </script>
 
 <template>
@@ -166,9 +195,16 @@ const nodeUnselect = (node) => {
         <v-row>
           <v-col cols="6">
             <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h2>
+            <div v-if="selectedBucket">
+              <v-icon @click="expandAll" icon="mdi-expand-all-outline" class="ml-4 mt-3"
+                title="Expand all (nested) folders"></v-icon>
+              <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3"
+                title="Collapse all expanded (nested) folders"></v-icon>
+            </div>
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
-              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="single" :filter="true"
-              filterPlaceholder="Enter search term" @node-select="nodeSelect" @node-unselect="nodeUnselect">
+              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="single"
+              v-model:expandedKeys="expandedKeys" :filter="true" filterPlaceholder="Enter search term"
+              @node-select="nodeSelect" @node-unselect="nodeUnselect">
               <template #default="slotProps">
                 <b>{{ slotProps.node.label }}</b>
               </template>
@@ -179,7 +215,6 @@ const nodeUnselect = (node) => {
                   v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
               </template>
             </Tree>
-            <v-divider class="my-10"></v-divider>
             <div v-if="showQRCode">
               <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
               <canvas id="canvas"></canvas>
@@ -198,6 +233,15 @@ const nodeUnselect = (node) => {
                     append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
                     <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
                     <v-img src="mdi-folder-outline"></v-img>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+              <v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline">
+                <v-expansion-panel-text>
+                  <v-checkbox v-model="downloadMultipleFilesAsZip" label="Allow multiple file download as singe zipfile"
+                    hint="Select multiple files and download them as a single zip file"
+                    class="ma-10 mt-2 mb-5"></v-checkbox>
+                  <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
+                    zip</v-btn>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
