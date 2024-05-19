@@ -4,6 +4,7 @@ import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
 import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import QRCode from 'qrcode'
 
 import Tree from 'primevue/tree';
@@ -13,6 +14,7 @@ const targetFolder = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
 const expandedKeys = ref({});
+const treeref = ref(null);
 
 const showImageThumbnails = ref(false)
 const showQRCode = ref(false)
@@ -20,14 +22,10 @@ const qrcodeFile = ref(null)
 const selectedBucket = ref(null)
 const bucketToEdit = ref(null)
 const showBucketEditorPopup = ref(false)
+const nameOfDownloadZipFile = ref(null)
 
 const downloadMultipleFilesAsZip = ref(false)
 
-const downloadZipfile = () => {
-  console.log('downloadZipfile')
-}
-
-//const drawer = ref(true)
 const bucketPAR = ref(null)
 const bucketName = computed(() => {
   // /b/website/o/
@@ -52,7 +50,6 @@ const bucketHeaders = ref([
 
 
 const editBucket = (bucket, index) => {
-  //  filesStore.editBucket(item, index)
   bucketToEdit.value = bucket
   showBucketEditorPopup.value = true
 }
@@ -79,6 +76,7 @@ const addAndEditBucket = () => {
 watch(selectedBucket, () => {
   filesStore.setPAR(selectedBucket.value.bucketPAR)
   bucketPAR.value = selectedBucket.value.bucketPAR
+  nameOfDownloadZipFile.value = selectedBucket.value.bucketName + ".zip"
 })
 
 const filesTree = computed(() => {
@@ -142,6 +140,65 @@ const handleFileUpload = async (event) => {
   }
 }
 
+watch(downloadMultipleFilesAsZip, () => {
+  for (let node of filesTree.value) {
+    if (node.nodeType === 'folder') {
+      setSelectableForNode(node, downloadMultipleFilesAsZip.value);
+    }
+  }
+})
+
+const setSelectableForNode = (node, selectable) => {
+  if (node.nodeType === 'folder') {
+    node.selectable = selectable;
+    if (node.children && node.children.length) {
+      for (let child of node.children) {
+        if (child.nodeType === 'folder') {
+          setSelectableForNode(child, selectable)
+        }
+      }
+    }
+  }
+};
+
+
+const downloadZipfile = () => {
+  // create a collection of all key values in selectedKey.value
+  const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
+  exportFilesToZip(selectedFiles, nameOfDownloadZipFile.value)
+
+}
+
+
+const addFileToZip = (promises, file, zip) => {
+  promises.push(new Promise((resolve, reject) => {
+    filesStore.getFile(file).then(blob => {
+      zip.file(file, blob);
+      resolve();
+    })
+  }));
+}
+const exportFilesToZip = (files, zipname) => {
+  const zip = new JSZip();
+  const promises = [];
+  files.forEach(file => {
+    addFileToZip(promises, file, zip);
+  })
+  // only when all files have been added can we generate the zip; that is when all promises are resolved
+
+  Promise.all(promises)
+    .then(results => {
+      // Generate the zip file and trigger download
+      zip.generateAsync({ type: "blob" })
+        .then(function (content) {
+          saveAs(content, zipname);
+        });
+    })
+}
+
+
+
+
 const nodeSelect = (node) => {
   if (node.nodeType === 'file') {
     const url = filesStore.PAR.value + node.data
@@ -173,7 +230,6 @@ const collapseAll = () => {
 const expandNode = (node) => {
   if (node.children && node.children.length) {
     expandedKeys.value[node.key] = true;
-
     for (let child of node.children) {
       expandNode(child);
     }
@@ -202,9 +258,10 @@ const expandNode = (node) => {
                 title="Collapse all expanded (nested) folders"></v-icon>
             </div>
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
-              class="w-full md:w-30rem tree-override" ref="treeRef" selectionMode="single"
-              v-model:expandedKeys="expandedKeys" :filter="true" filterPlaceholder="Enter search term"
-              @node-select="nodeSelect" @node-unselect="nodeUnselect">
+              class="w-full md:w-30rem tree-override" ref="treeref"
+              :selectionMode="downloadMultipleFilesAsZip ? 'checkbox' : 'single'" v-model:expandedKeys="expandedKeys"
+              :filter="true" filterPlaceholder="Enter search term" @node-select="nodeSelect"
+              @node-unselect="nodeUnselect">
               <template #default="slotProps">
                 <b>{{ slotProps.node.label }}</b>
               </template>
@@ -240,6 +297,8 @@ const expandNode = (node) => {
                   <v-checkbox v-model="downloadMultipleFilesAsZip" label="Allow multiple file download as singe zipfile"
                     hint="Select multiple files and download them as a single zip file"
                     class="ma-10 mt-2 mb-5"></v-checkbox>
+                  <v-text-field v-model="nameOfDownloadZipFile" label="Zip filename"
+                    class="ma-10 mt-2 mb-5"></v-text-field>
                   <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
                     zip</v-btn>
                 </v-expansion-panel-text>

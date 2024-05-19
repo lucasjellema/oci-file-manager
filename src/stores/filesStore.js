@@ -51,6 +51,16 @@ export const useFilesStore = defineStore('filesStore', () => {
       })
   }
 
+  const getFile = (filename) => {
+    return new Promise((resolve, reject) => {
+      fetch(PAR.value, { method: 'GET' })
+        .then(response => response.blob())
+        .then(blob => {
+          resolve(blob);
+        });
+    })
+  }
+
   const foldersInBucket = ref([])
   const bucketContents = ref([])
   const filesAndFolders = ref([])
@@ -123,13 +133,14 @@ export const useFilesStore = defineStore('filesStore', () => {
     if (folder.nestedFolders)
       for (const childFolder of folder.nestedFolders) {
         const folderNode = {
-          key: childFolder.name,
+          key: childFolder.name + '-folder',
           label: childFolder.name,
           data: folder.name,
           icon: 'mdi mdi-folder-outline',
           styleClass: `treekey|folder|${childFolder.name}`,
           nodeType: 'folder',
           type: 'folder',
+          leaf: false,
           selectable: false,
           children: []
         }
@@ -147,6 +158,7 @@ export const useFilesStore = defineStore('filesStore', () => {
           styleClass: `treekey|file|${file.name}`,
           nodeType: 'file',
           type: 'file',
+          leaf: true,
           selectable: true,
           children: []
         }
@@ -159,13 +171,14 @@ export const useFilesStore = defineStore('filesStore', () => {
     if (filesAndFolders.value.nestedFolders)
       for (const folder of filesAndFolders.value.nestedFolders) {
         const folderNode = {
-          key: folder.name,
+          key: folder.name + '-folder',
           label: folder.name,
           data: folder.name,
           icon: 'mdi mdi-folder-outline',
           styleClass: `treekey|folder|${folder.name}`,
           nodeType: 'folder',
           type: 'folder',
+          leaf: false,
           selectable: false,
           children: []
         }
@@ -183,6 +196,7 @@ export const useFilesStore = defineStore('filesStore', () => {
           styleClass: `treekey|file|${file.name}`,
           nodeType: 'file',
           type: 'file',
+          leaf: true,
           selectable: true,
           children: []
         }
@@ -215,5 +229,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { refreshFiles, PAR, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket }
+  return { refreshFiles, PAR, getFile, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket }
 })
