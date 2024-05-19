@@ -52,7 +52,25 @@ The QR Codes are displayed only if you check the checkbox in the Settings panel:
 
 ![](images/qrcode.png)
 
+## Download Multiple Files as One Zip
+The Download panel contains a checkbox that when checked:
+* allows multi-select of files (and folders) in the tree
+* causes a download operation to create a zip file that contains all selected files (and nested folders)
 
+![](images/download-panel.png)
+
+After checking the box, checkboxes appear in the file navigator, allowing every file and folder to be selected. When a folder is selected, all of its contents is selected - both files and nested folders (and their nested folders). Additionally, clickable icons display above the tree - to select all nodes in the tree or to unselect all nodes.
+
+The name of the zip file can be specified. When the Download button is pressed, all files are retrieved from the OCI Bucket and are added to the zip-file. When all files are added, the zip file is downloaded to the client.
+
+## Create a URL (or QR Code) to Share an OCI Bucket through the OCI File Manager
+Access to an OCI Bucket can be shared through a URL to the OCI File Manager (that contains query parameters that indicate the Pre Authenticated Request url of Bucket). The easiest way to get hold of this URL for a Bucket - either as URL or as QR Code - is in the Share panel:
+
+![](images/share-url.png)
+
+Open the panel. Specify a label for the bucket to share. Indicate whether read and write should be allowed to the person receiving the Share URL. Note: this does not enforce authorization; the permissions assigned to the PAR determine what can be done with Share URL. However, if you indicate for example that write is not allowed, then OCI File Manager will run without Upload panel. However if the manipulates the URL, uses Bucket management to edit the settings or changes the values of JavaScript variables, then user can upload files after all (if the PAR allows it).
+
+This Share URL feature allows you for example to scan the QR Code on a mobile device and access the files in an OCI Bucket without any further configuration. It is also a simple way to create a shared "drive" between multiple parties. If one creates the Bucket and PAR, they can share the OCI File Manager URL for that PAR with the others who can directly access the files in their browser.  
 
 # Develop and Build/Deploy/Run the OCI File Manager
 
