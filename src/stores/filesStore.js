@@ -27,7 +27,7 @@ export const useFilesStore = defineStore('filesStore', () => {
       bucket.description = description
     }
     localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
-
+    return bucket
   }
 
   const removeBucket = (bucketName) => {

@@ -84,7 +84,17 @@ const filesTree = computed(() => {
 })
 
 onMounted(() => {
-  filesStore.refreshFiles()
+  // inspect query params
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('bucketPAR')) {
+    // http://localhost:5173/oci-file-manager/?bucketPAR=https://objectstorage.us-ashburn-1.oraclecloud.com/p/3ZvD2n18VN6y/n/idtwlqf2hanz/b/website/o/&label=Walk
+    const label = urlParams.get('label')
+    const bucketPAR = urlParams.get('bucketPAR')
+    const bucketName = extractBucketName(bucketPAR)
+    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label)
+    selectedBucket.value = bucket
+  }
+
 })
 
 const renderQRCode = (myurl) => {
