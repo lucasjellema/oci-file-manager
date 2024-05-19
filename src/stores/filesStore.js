@@ -17,14 +17,16 @@ export const useFilesStore = defineStore('filesStore', () => {
 
   initializeRememberedBuckets()
 
-  const saveBucket = (bucketName, bucketPAR, label, description) => {
+  const saveBucket = (bucketName, bucketPAR, label, description, read = true, write = true) => {
     const bucket = rememberedBuckets.value.find(bucket => bucket.bucketName === bucketName);
     if (!bucket) {
-      rememberedBuckets.value.push({ bucketName, bucketPAR, label, description })
+      rememberedBuckets.value.push({ bucketName, bucketPAR, label, description, readAllowed: read, writeAllowed: write })
     } else {
       bucket.bucketPAR = bucketPAR
       bucket.label = label
       bucket.description = description
+      bucket.readAllowed = read
+      bucket.writeAllowed = write
     }
     localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
     return bucket

@@ -59,7 +59,7 @@ const removeBucket = (bucket, index) => {
 
 const saveBucket = () => {
   bucketToEdit.value.bucketName = extractBucketName(bucketToEdit.value.bucketPAR)
-  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description)
+  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description, bucketToEdit.value.readAllowed, bucketToEdit.value.writeAllowed)
   showBucketEditorPopup.value = false
 }
 
@@ -87,11 +87,17 @@ onMounted(() => {
   // inspect query params
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('bucketPAR')) {
-    // http://localhost:5173/oci-file-manager/?bucketPAR=https://objectstorage.us-ashburn-1.oraclecloud.com/p/3ZvD2n18VN6y/n/idtwlqf2hanz/b/website/o/&label=Walk
+    // http://localhost:5173/oci-file-manager/?bucketPAR=https://objectstorage.us-ashburn-1.oraclecloud.com/p/3ZvD2n18VN6y/n/idtwlqf2hanz/b/website/o/&label=Walk&permissions=rw
     const label = urlParams.get('label')
     const bucketPAR = urlParams.get('bucketPAR')
     const bucketName = extractBucketName(bucketPAR)
-    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label)
+    const permissions = urlParams.get('permissions') ?? "rw"
+    // read is true if permissions contains r
+    const readAllowed = permissions.includes('r')
+    // write is true if permissions contains w
+    const writeAllowed = permissions.includes('w')
+    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed)
+
     selectedBucket.value = bucket
   }
 
@@ -280,7 +286,8 @@ const expandNode = (node) => {
       <v-container fluid>
         <v-row>
           <v-col cols="6">
-            <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h2>
+            <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')'
+              + (!selectedBucket?.writeAllowed ? '(read only)' : '') }}</h2>
             <v-container fluid v-if="selectedBucket">
               <v-row>
                 <v-col cols="6">
@@ -306,20 +313,26 @@ const expandNode = (node) => {
                 <b>{{ slotProps.node.label }}</b>
               </template>
               <template #file="slotProps">
-                <a :href="selectedBucket.bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
-                  class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
-                <v-img height="50" :src="selectedBucket.bucketPAR + slotProps.node.data" class="thumbnail"
-                  v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
+                <div v-if="selectedBucket?.readAllowed">
+                  <a :href="selectedBucket.bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
+                    class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
+                  <v-img height="50" :src="selectedBucket.bucketPAR + slotProps.node.data" class="thumbnail"
+                    v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
+                </div>
+                <div v-else>
+                  {{ slotProps.node.label }}
+                </div>
               </template>
             </Tree>
-            <div v-if="showQRCode">
+            <div v-if="showQRCode && selectedBucket?.readAllowed">
               <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
               <canvas id="canvas"></canvas>
             </div>
           </v-col>
           <v-col cols=" 4" offset="1" mr="10">
             <v-expansion-panels :multiple="false">
-              <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline">
+              <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline"
+                v-if="selectedBucket?.writeAllowed">
                 <v-expansion-panel-text>
                   <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
                     :multiple="true"></v-file-input>
@@ -332,7 +345,8 @@ const expandNode = (node) => {
                     <v-img src="mdi-folder-outline"></v-img>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline">
+              <v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline"
+                v-if="selectedBucket?.readAllowed">
                 <v-expansion-panel-text>
                   <v-checkbox v-model="downloadMultipleFilesAsZip" label="Allow multiple file download as singe zipfile"
                     hint="Select multiple files and download them as a single zip file"
@@ -402,6 +416,8 @@ const expandNode = (node) => {
         <v-text-field v-model="bucketToEdit.bucketPAR" label="Pre Authenticated Request URL"
           hint="enter the PAR for a Bucket in OCI Object Storage (with at least read and list objects privileges)"></v-text-field>
         <v-text-field v-model="bucketToEdit.description" label="Description"></v-text-field>
+        <v-checkbox v-model="bucketToEdit.readAllowed" label="Read Allowed" class="mt-1"></v-checkbox>
+        <v-checkbox v-model="bucketToEdit.writeAllowed" label="Write Allowed" class="mt-1"></v-checkbox>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
