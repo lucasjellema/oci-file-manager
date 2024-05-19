@@ -23,6 +23,9 @@ const selectedBucket = ref(null)
 const bucketToEdit = ref(null)
 const showBucketEditorPopup = ref(false)
 const nameOfDownloadZipFile = ref(null)
+const allowReadInShare = ref(true)
+const allowWriteInShare = ref(true)
+const labelForShare = ref(null)
 
 const downloadMultipleFilesAsZip = ref(false)
 
@@ -35,6 +38,24 @@ const bucketName = computed(() => {
 
   return extractBucketName(selectedBucket.value.bucketPAR)
 })
+
+const computedBucketShareURL = computed(() => {
+  if (!selectedBucket.value) return null
+  return window.location.origin + window.location.pathname
+    + '?bucketPAR=' + selectedBucket.value.bucketPAR
+    + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
+    + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
+
+})
+
+watch(computedBucketShareURL, () => {
+  generateQRCodeCodeForShareURL(computedBucketShareURL.value)
+})
+
+const copyShareURLToClipboard = () => {
+  // copy computedBucketShareURL to clipboard
+  navigator.clipboard.writeText(computedBucketShareURL.value)
+}
 
 const extractBucketName = (bucketPAR) => {
   const start = bucketPAR.indexOf('/b/') + 3
@@ -70,13 +91,19 @@ const addAndEditBucket = () => {
   showBucketEditorPopup.value = true
 }
 
+const initializeBucket = (bucket) => {
+  filesStore.setPAR(bucket.bucketPAR)
+  bucketPAR.value = bucket.bucketPAR
+  nameOfDownloadZipFile.value = bucket.bucketName + ".zip"
+  labelForShare.value = bucket.label
+}
 
 
 // when bucketPAR changes, inform filestore to refresh
-watch(selectedBucket, () => {
-  filesStore.setPAR(selectedBucket.value.bucketPAR)
-  bucketPAR.value = selectedBucket.value.bucketPAR
-  nameOfDownloadZipFile.value = selectedBucket.value.bucketName + ".zip"
+watch(selectedBucket, (newVal, oldVal) => {
+  console.log('selectedBucket changed', newVal, oldVal)
+  if (!newVal) return
+  initializeBucket(newVal)
 })
 
 const filesTree = computed(() => {
@@ -97,10 +124,9 @@ onMounted(() => {
     // write is true if permissions contains w
     const writeAllowed = permissions.includes('w')
     const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed)
-
     selectedBucket.value = bucket
+    initializeBucket(bucket)
   }
-
 })
 
 const renderQRCode = (myurl) => {
@@ -116,8 +142,26 @@ const renderQRCode = (myurl) => {
     }
   }
   var canvas = document.getElementById('canvas')
-
   QRCode.toCanvas(canvas, myurl, opts, function (error) {
+    if (error) console.error(error)
+  })
+}
+
+
+const generateQRCodeCodeForShareURL = (shareURL) => {
+  var opts = {
+    errorCorrectionLevel: 'H',
+    type: 'image/jpeg',
+    quality: 0.3,
+    margin: 1,
+    scale: 5,
+    color: {
+      dark: "#010599FF",
+      light: "#FFFFFF"
+    }
+  }
+  var canvas = document.getElementById('canvasQRCodeForShareURL')
+  QRCode.toCanvas(canvas, shareURL, opts, function (error) {
     if (error) console.error(error)
   })
 }
@@ -355,6 +399,25 @@ const expandNode = (node) => {
                     class="ma-10 mt-2 mb-5"></v-text-field>
                   <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
                     zip</v-btn>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+              <v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">
+                <v-expansion-panel-text>
+                  <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
+                    label="Label"></v-text-field>
+                  <v-checkbox v-model="allowReadInShare" label="Allow Read Access"
+                    v-if="selectedBucket?.readAllowed"></v-checkbox>
+                  <v-checkbox v-model="allowWriteInShare" label="Allow Write Access"
+                    v-if="selectedBucket?.writeAllowed"></v-checkbox>
+                  <v-text-field v-model="computedBucketShareURL" label="URL to share" :readonly="true"
+                    class="mt-2 mb-5"></v-text-field>
+                  <v-btn @click="copyShareURLToClipboard" prepend-icon="mdi-content-copy" mt="30">Copy Share URL to
+                    Clipboard</v-btn>
+
+                  <div>
+                    <h2>QR Code to Share</h2>
+                    <canvas id="canvasQRCodeForShareURL"></canvas>
+                  </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
