@@ -68,7 +68,7 @@ export const useFilesStore = defineStore('filesStore', () => {
   const bucketContents = ref([])
   const filesAndFolders = ref([])
 
-  function createNestedStructure(paths) {
+  const createNestedStructure = (paths) => {
     const root = { name: "root", nestedFolders: [], files: [] };
     paths.forEach((path) => {
       const parts = path.split('/');
@@ -78,7 +78,7 @@ export const useFilesStore = defineStore('filesStore', () => {
     return root;
   }
 
-  function addPath(currentFolder, parts, fullPath) {
+  const addPath = (currentFolder, parts, fullPath) => {
     if (parts.length === 1) {
       // It's a file
       currentFolder.files.push({ name: parts[0], fullPath: fullPath });
@@ -115,16 +115,6 @@ export const useFilesStore = defineStore('filesStore', () => {
   }
 
   const processFileObjects = (fileObjects) => {
-    // if a fileObject name contains a slash, then the text before the slash is a folder name ; for now only one level of nesting is supported
-    const folderNames = []
-    const rootFolder = { name: '', children: [] }
-    fileObjects.forEach(fileObject => {
-      let name = fileObject.name
-      findFolders(name, folderNames, "", rootFolder)
-
-
-    })
-
     const nestedStructure = createNestedStructure(fileObjects.map(fileObject => fileObject.name));
     foldersInBucket.value = foldersInBucket.value.sort()
     filesAndFolders.value = nestedStructure
