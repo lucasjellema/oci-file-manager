@@ -215,6 +215,26 @@ const nodeUnselect = (node) => {
 
 }
 
+const selectAll = () => {
+  const selectAllNodes = (nodes) => {
+    const keys = {};
+    const traverse = (node) => {
+      keys[node.key] = true;
+      if (node.children) {
+        node.children.forEach(traverse);
+      }
+    };
+    nodes.forEach(traverse);
+    return keys;
+  };
+
+  selectedKey.value = selectAllNodes(filesTree.value);
+}
+
+const unselectAll = () => {
+  selectedKey.value = {};
+}
+
 const expandAll = () => {
   for (let node of filesTree.value) {
     expandNode(node);
@@ -251,12 +271,22 @@ const expandNode = (node) => {
         <v-row>
           <v-col cols="6">
             <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')' }}</h2>
-            <div v-if="selectedBucket">
-              <v-icon @click="expandAll" icon="mdi-expand-all-outline" class="ml-4 mt-3"
-                title="Expand all (nested) folders"></v-icon>
-              <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3"
-                title="Collapse all expanded (nested) folders"></v-icon>
-            </div>
+            <v-container fluid v-if="selectedBucket">
+              <v-row>
+                <v-col cols="6">
+                  <v-icon @click="expandAll" icon="mdi-expand-all-outline" class="ml-4 mt-3"
+                    title="Expand all (nested) folders"></v-icon>
+                  <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3"
+                    title="Collapse all expanded (nested) folders"></v-icon>
+                </v-col>
+                <v-col cols="6" v-if="downloadMultipleFilesAsZip">
+                  <v-icon @click="selectAll" icon="mdi-select-all" class="ml-10 mt-3"
+                    title="Select all files and (nested) folders"></v-icon>
+                  <v-icon @click="unselectAll" icon="mdi-selection-off" class="ml-2 mt-3"
+                    title="Clear current selection"></v-icon>
+                </v-col>
+              </v-row>
+            </v-container>
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
               class="w-full md:w-30rem tree-override" ref="treeref"
               :selectionMode="downloadMultipleFilesAsZip ? 'checkbox' : 'single'" v-model:expandedKeys="expandedKeys"
