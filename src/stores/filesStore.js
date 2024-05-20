@@ -43,7 +43,6 @@ export const useFilesStore = defineStore('filesStore', () => {
     refreshFiles()
   }
 
-
   const refreshFiles = () => {
     fetch(PAR.value, { method: 'GET' })
       .then(response => response.json())
@@ -182,7 +181,7 @@ export const useFilesStore = defineStore('filesStore', () => {
   }
 
 
-  const submitBlob = (blob, filename) => {
+  const submitBlob = async (blob, filename, progressReport) => {
     const fetchOptions = {
       method: 'PUT',
       body: blob,
@@ -196,11 +195,17 @@ export const useFilesStore = defineStore('filesStore', () => {
         return response.status;
       })
       .then(data => {
+        progressReport.uploadCount++
+        progressReport.uploadSize += blob.size
         console.log('Success:', data);
         refreshFiles()
+        return 0
       })
       .catch(error => {
+        progressReport.uploadErrorCount++
+        progressReport.uploadErrors.push(error)
         console.error('Error:', error);
+        return 1
       });
   }
 

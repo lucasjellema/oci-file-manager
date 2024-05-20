@@ -11,7 +11,11 @@ import Tree from 'primevue/tree';
 
 const filesStore = useFilesStore()
 const targetFolder = ref(null)
+const progressReport = ref({})
 const uploadFileInput = ref(null)
+const uploadInProgress = ref(false)
+// const numberOfFilesUploaded = ref(0)
+// const numberOfBytesUploaded = ref(0)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
 const expandedKeys = ref({});
@@ -158,24 +162,29 @@ const generateQRCodeCodeForShareURL = (shareURL) => {
   })
 }
 
-const submitData = () => {
+const submitData = async () => {
   const fileInput = uploadFileInput.value  // document.getElementById('uploadedFile');
   const files = fileInput.files;
+  uploadInProgress.value = true
+  progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: files.length }
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (file) {
       if (expandZipfiles.value && file.name.toLowerCase().endsWith('.zip')) {
         const zip = new JSZip();
         zip.loadAsync(file).then(async (contents) => {
-          const files = Object.values(contents.files);
-          for (const file of files) {
-            const blob = await zip.file(file.name).async('blob')
-            const relativePath = (targetFolder.value ? targetFolder.value + '/' : '') + (file.dir ? file.dir + '/' + file.name : file.name)
-            filesStore.submitBlob(blob, relativePath)
+          const filesInZip = Object.values(contents.files);
+          progressReport.value.totalToUpload += filesInZip.length - 1 // add the number of files in the zip file to the total number to upload, and remove the zip file itself
+          for (const fileFromZip of filesInZip) {
+            if (fileFromZip.dir) { progressReport.value.totalToUpload--; continue } // do not count folders in the total number to upload
+            const fileFromZipName = fileFromZip.name
+            const blob = await zip.file(fileFromZipName).async('blob')
+            const relativePath = (targetFolder.value ? targetFolder.value + '/' : '') + (fileFromZip.dir ? fileFromZip.dir + '/' + fileFromZipName : fileFromZipName)
+            filesStore.submitBlob(blob, relativePath, progressReport.value)
           }
         })
       } else {
-        filesStore.submitBlob(file, (targetFolder.value ? targetFolder.value + '/' : '') + file.name)
+        filesStore.submitBlob(file, (targetFolder.value ? targetFolder.value + '/' : '') + file.name, progressReport.value)
       }
     }
   }
@@ -379,9 +388,22 @@ const expandNode = (node) => {
                     hint="Submit files in zip archive one by one" class="ma-10 mt-2 mb-5"></v-checkbox>
                   <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
                     hint="Optionally select or define a folder to upload the file(s) to"
-                    append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
-                    <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
-                    <v-img src="mdi-folder-outline"></v-img>
+                    append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5">
+                  </v-combobox>
+                  <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
+
+                  <v-img src="mdi-folder-outline"></v-img>
+                  <div v-if="uploadInProgress" class="text-center mt-5">
+                    <v-icon icon="mdi-progress-upload"></v-icon>
+                    {{ progressReport.uploadCount }} / {{ progressReport.totalToUpload }} files uploaded,
+                    {{ progressReport.uploadSize }} bytes uploaded
+                    <div v-if="progressReport.uploadErrorCount > 0">
+                      {{ progressReport.uploadErrorCount }} file uploads failed
+                      <div v-for="error in progressReport.uploadErrors">
+                        {{ error }}
+                      </div>
+                    </div>
+                  </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline"
