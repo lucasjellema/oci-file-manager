@@ -870,10 +870,144 @@ const unselectAll = () => {
 
 
 # Allow Share URL feature to provide direct access to a Bucket through OCI File Manager using a single URL
+
+
   * Introduce logic to interpret query parameters
   * Add Share tab with label and permission checkboxes
-  * Generate Share URL
-  * Add QR Code for Share URL
+```
+<v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">
+  <v-expansion-panel-text>
+    <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
+      label="Label"></v-text-field>
+    <v-checkbox v-model="allowReadInShare" label="Allow Read Access"
+      v-if="selectedBucket?.readAllowed"></v-checkbox>
+    <v-checkbox v-model="allowWriteInShare" label="Allow Write Access"
+      v-if="selectedBucket?.writeAllowed"></v-checkbox>
+    <v-text-field v-model="computedBucketShareURL" label="URL to share" :readonly="true"
+      class="mt-2 mb-5"></v-text-field>
+    <v-btn @click="copyShareURLToClipboard" prepend-icon="mdi-content-copy" mt="30">Copy Share URL to
+      Clipboard</v-btn>
+  </v-expansion-panel-text>
+</v-expansion-panel>
+```
+![](images/share-panel.png)
+
+This panel is backed by some logic in `<script>`:
+```
+const allowReadInShare = ref(true)
+const allowWriteInShare = ref(true)
+const labelForShare = ref(null)
+
+const computedBucketShareURL = computed(() => {
+  if (!selectedBucket.value) return null
+  return window.location.origin + window.location.pathname
+    + '?bucketPAR=' + selectedBucket.value.bucketPAR
+    + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
+    + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
+})
+
+const copyShareURLToClipboard = () => {
+  // copy computedBucketShareURL to clipboard
+  navigator.clipboard.writeText(computedBucketShareURL.value)
+}
+```
+
+Variables to hold the values set in the Share panel. Function `computedBucketShareURL` that calculates the new shared URL whenever a relevant input changes and provides the value for the read only text field that displays the url. Finally function `copyShareURLToClipboard` - invoked from the button in the share panel - that copies the URL to the clipboard for easy pasting in other applications.
+
+The Share URL is composed from a number of elements:
+* the current origin and pathname of the OCI File Manager - the host, port and URL path where this is instance of OCI File Manager is running
+* the bucketPAR - the PAR used for accessing the bucket
+* label - the textual label presented to anyone using the Share URL
+* permissions - the modes in which this URL is to be used (allowing read and/or write of files); note: this does not enforce anythingm, it merely suggests to the OCI File Manager how it should configure its UI
+  
+Some logic is required now for the OCI File Manager to recognize, interpret and apply the query parameters that make up the Share URL.
+
+## Initialization of OCI File Manager from URL Query Parameters
+
+In `App.vue`, define call onMounted. The logic in this call is executed as soon as `App.vue` is processed and ready for initialization (and is executed once per application reload).
+```
+onMounted(() => {
+  // inspect query params
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('bucketPAR')) {
+    // http://localhost:5173/oci-file-manager/?bucketPAR=https://objectstorage.us-ashburn-1.oraclecloud.com/p/3ZvD2n18VN6y/n/idtwlqf2hanz/b/website/o/&label=Walk&permissions=rw
+    const label = urlParams.get('label')
+    const bucketPAR = urlParams.get('bucketPAR')
+    const bucketName = extractBucketName(bucketPAR)
+    const permissions = urlParams.get('permissions') ?? "rw"
+    // read is true if permissions contains r
+    const readAllowed = permissions.includes('r')
+    // write is true if permissions contains w
+    const writeAllowed = permissions.includes('w')
+    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed)
+    selectedBucket.value = bucket
+  }
+})
+
+```
+
+This logic inspects the query parameters. If it finds parameter bucketPAR, it springs into action. Query parameters bucketPAR, label and permissions are processed. A bucket ioject is constructed in a call to filesStore.saveBucket. This function will create the bucket, save it to localstorage and return it. Subsequently, this bucket is set as the selectedBucket and initialization for that bucket takes place. 
+
+A watch function tracks changes to selectedBucket and kicks in to refresh the UI with data from the bucket:
+
+```
+const initializeBucket = (bucket) => {
+  filesStore.setPAR(bucket.bucketPAR)
+  nameOfDownloadZipFile.value = bucket.bucketName + ".zip"
+  labelForShare.value = bucket.label
+}
+
+watch(selectedBucket, (newVal, oldVal) => {
+  if (!newVal) return
+  initializeBucket(newVal)
+})
+``` 
+
+## Add QR Code for Share URL
+In addition to the URL in textual format, it would be nice to have a QR Code to scan for example on a mobile device. Scanning the QR Code takes the device straight to the OCI File Manager *and* the bucket.
+
+In the Share panel, a placeholder is added for the QR Code:
+
+```
+<v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">
+  <v-expansion-panel-text>
+   ...
+    <div>
+      <h2>QR Code to Share</h2>
+      <canvas id="canvasQRCodeForShareURL"></canvas>
+    </div>
+  </v-expansion-panel-text>
+</v-expansion-panel>
+```
+
+In `<script>`: whenever the computedBucketSharedURL changes, function `generateQRCodeCodeForShareURL` is invoked to generate a fresh QR Code image. That function is fairly straightforward, using the canvas element with id `canvasQRCodeForShareURL` to render the QR Code, and taking the computed valye of the SharedURL as its input.  
+
+```
+watch(computedBucketShareURL, () => {
+  generateQRCodeCodeForShareURL(computedBucketShareURL.value)
+})
+
+const generateQRCodeCodeForShareURL = (shareURL) => {
+  var opts = {
+    errorCorrectionLevel: 'H',
+    type: 'image/jpeg',
+    quality: 0.3,
+    margin: 1,
+    scale: 5,
+    color: {
+      dark: "#010599FF",
+      light: "#FFFFFF"
+    }
+  }
+  var canvas = document.getElementById('canvasQRCodeForShareURL')
+  QRCode.toCanvas(canvas, shareURL, opts, function (error) {
+    if (error) console.error(error)
+  })
+}
+```
+![](images/sharedurl-qrcode.png)
+
+Anyone who scans this QR Code can subsequently access OCI File Manager in the context of the currently selected bucket. If you can this screenshot, you too can access that bucket (or at least for as long as the PAR underlying the url is valid).
 
 # Resouces
 
