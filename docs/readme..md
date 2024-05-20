@@ -662,6 +662,7 @@ To save changes to the localstorage, this code is relevant:
 
 Select the current bucket/switch between buckets:
 
+```
 ...
         </v-row>
         <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail>
@@ -721,11 +722,151 @@ Subsequently the deployment itself is performed:
 
 
 # Add the ability to download multiple files in a single zip file
+It seems useful for users to be able to download multiple files from the bucket packaged in a single zip file. The tool would fetch every selected file, assemble the files into an archive and download the archive as zip file with a specified name.
+
+This functionality is implemented in the following steps:
   * Create Download Panel
   * Allow Selection of Files and Folders
   * Collect selected files into a Zip file
   * Save the zip file with the specified name
   * Add Select All/Unselect All icons
+  
+## Create the Download Panel
+
+In the download panel, the user can indicate that multiple files can be downloaded at once. Checking the box will enable selection in the tree of multiple files and of entire folders (and all their contents)
+```
+<v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline"
+  v-if="selectedBucket?.readAllowed">
+  <v-expansion-panel-text>
+    <v-checkbox v-model="downloadMultipleFilesAsZip" label="Allow multiple file download as single zipfile"
+      hint="Select multiple files and download them as a single zip file"
+      class="ma-10 mt-2 mb-5"></v-checkbox>
+    <v-text-field v-model="nameOfDownloadZipFile" label="Zip filename"
+      class="ma-10 mt-2 mb-5"></v-text-field>
+    <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
+      zip</v-btn>
+  </v-expansion-panel-text>
+</v-expansion-panel>
+```
+
+![](images/downloadpanel.png)
+
+This panel is backed by these lines in the `<ascript>` section:
+```
+const downloadMultipleFilesAsZip = ref(false)
+const nameOfDownloadZipFile = ref(null)
+
+const downloadZipfile = () => {
+...
+}
+``` 
+More on the function `downloadZipFile` a little later.
+
+## Allow selection of (multiple) files and folders
+
+The Tree component is configured to allow selection of multiple files through `checkbox` selection mode in case of the download multiple files as one zip box is checked. The selected keys are available in the variable `selectedKey` 
+
+```
+<Tree :value="filesTree" v-model:selectionKeys="selectedKey" 
+:selectionMode="downloadMultipleFilesAsZip ? 'checkbox' : 'single'" ... >
+```
+
+and in `<script>`:
+
+```
+const selectedKey = ref(null);
+```
+The combination of the Download Panel and these changes in the Tree component now make it possible to select files and folders.
+![](images/selectable-tree-nodes.png)
+
+## Download Zip File with all selected files
+The logic in the `<script>` section in `App.vue` to produce and save the zip file is as follows:
+```
+const downloadZipfile = () => {
+  // create a collection of all key values in selectedKey.value
+  const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
+  exportFilesToZip(selectedFiles, nameOfDownloadZipFile.value)
+}
+
+const addFileToZip = (promises, file, zip) => {
+  promises.push(new Promise((resolve, reject) => {
+    filesStore.getFile(file).then(blob => {
+      zip.file(file, blob);
+      resolve();
+    })
+  }));
+}
+const exportFilesToZip = (files, zipname) => {
+  const zip = new JSZip();
+  const promises = [];
+  files.forEach(file => {
+    addFileToZip(promises, file, zip);
+  })
+  // only when all files have been added can we generate the zip; that is when all promises are resolved
+
+  Promise.all(promises)
+    .then(results => {
+      // Generate the zip file and trigger download
+      zip.generateAsync({ type: "blob" })
+        .then(function (content) {
+          saveAs(content, zipname);
+        });
+    })
+}
+```
+
+This code makes us of the saveAs function in module `file-saver`:
+```
+npm install file-saver --save
+```
+
+The module is imported in `App.vue` like this:
+```
+import { saveAs } from 'file-saver'
+```
+
+## Add Select All/Unselect All icons
+A nice to have - and easy to implement -: icons to allow the user to select or unselect all files and folders. The UI elements:
+```
+<v-container fluid v-if="selectedBucket">
+  <v-row>
+    <v-col cols="6">
+    ...
+    </v-col>
+    <v-col cols="6" v-if="downloadMultipleFilesAsZip">
+      <v-icon @click="selectAll" icon="mdi-select-all" class="ml-10 mt-3"
+        title="Select all files and (nested) folders"></v-icon>
+      <v-icon @click="unselectAll" icon="mdi-selection-off" class="ml-2 mt-3"
+        title="Clear current selection"></v-icon>
+    </v-col>
+  </v-row>
+</v-container>
+<Tree :value="filesTree" ...
+```
+and the corresponding `<script>` entry:
+```
+const selectAll = () => {
+  const selectAllNodes = (nodes) => {
+    const keys = {};
+    const traverse = (node) => {
+      keys[node.key] = true;
+      if (node.children) {
+        node.children.forEach(traverse);
+      }
+    };
+    nodes.forEach(traverse);
+    return keys;
+  };
+
+  selectedKey.value = selectAllNodes(filesTree.value);
+}
+
+const unselectAll = () => {
+  selectedKey.value = {};
+}
+```
+![](images/select-unselect-all.png)
+
 
 
 # Allow Share URL feature to provide direct access to a Bucket through OCI File Manager using a single URL
