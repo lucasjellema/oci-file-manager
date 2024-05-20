@@ -683,6 +683,43 @@ Select the current bucket/switch between buckets:
 
 # Add Deployment to GitHub Pages
 
+Static web applications such as the OCI File Manager can be published and accessed on GitHub Pages. This is an easy way to share the application with a wider audience. Deployment to GitHub pages can be done from the development environment on the command line using npm after a few simple actions.
+
+Install npm module gh-pages
+```
+npm install gh-pages --save-dev
+```
+
+Add these lines in `package.json`:
+```
+  "homepage": "https://lucasjellema.github.io/oci-file-manager/",
+  "scripts": {
+    ...
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+```   
+
+Update `vite.config.js`:
+```
+export default defineConfig({
+  base: "/oci-file-manager/",
+  plugins: [
+    vue(),
+  ],
+```  
+With these changes, the OCI File Manager can be (re)deployed to GitHub Pages using:
+```
+npm run deploy
+```
+The first time this deployment is ran, a new branch is created - called `gh-pages` - and the GitHub project is configured for GitHub Pages, including GitHub actions for do the actual deployment. 
+
+![](images/github-pages.png)
+
+Subsequently the deployment itself is performed:
+![](images/github-page-deployment.png) 
+
+
 # Add the ability to download multiple files in a single zip file
   * Create Download Panel
   * Allow Selection of Files and Folders
