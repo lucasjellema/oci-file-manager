@@ -11,6 +11,7 @@ import Tree from 'primevue/tree';
 
 const filesStore = useFilesStore()
 const targetFolder = ref(null)
+const uploadFileInput = ref(null)
 const expandZipfiles = ref(false)
 const selectedKey = ref(null);
 const expandedKeys = ref({});
@@ -40,7 +41,6 @@ const computedBucketShareURL = computed(() => {
     + '?bucketPAR=' + selectedBucket.value.bucketPAR
     + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
     + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
-
 })
 
 watch(computedBucketShareURL, () => {
@@ -159,7 +159,7 @@ const generateQRCodeCodeForShareURL = (shareURL) => {
 }
 
 const submitData = () => {
-  const fileInput = document.getElementById('uploadedFile');
+  const fileInput = uploadFileInput.value  // document.getElementById('uploadedFile');
   const files = fileInput.files;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -179,7 +179,7 @@ const submitData = () => {
       }
     }
   }
-  fileInput.value = ''
+  fileInput.reset()
 }
 
 
@@ -331,11 +331,15 @@ const expandNode = (node) => {
                   <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3"
                     title="Collapse all expanded (nested) folders"></v-icon>
                 </v-col>
-                <v-col cols="6" v-if="downloadMultipleFilesAsZip">
+                <v-col cols="5" v-if="downloadMultipleFilesAsZip">
                   <v-icon @click="selectAll" icon="mdi-select-all" class="ml-10 mt-3"
                     title="Select all files and (nested) folders"></v-icon>
                   <v-icon @click="unselectAll" icon="mdi-selection-off" class="ml-2 mt-3"
                     title="Clear current selection"></v-icon>
+                </v-col>
+                <v-col cols="1">
+                  <v-icon @click="filesStore.refreshFiles" icon="mdi-refresh" class="ml-4 mt-3"
+                    title="Refresh Tree"></v-icon>
                 </v-col>
               </v-row>
             </v-container>
@@ -369,7 +373,8 @@ const expandNode = (node) => {
               <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline"
                 v-if="selectedBucket?.writeAllowed">
                 <v-expansion-panel-text>
-                  <v-file-input id="uploadedFile" label="Upload file(s)" accept="*/*" :multiple="true"></v-file-input>
+                  <v-file-input id="uploadedFile" ref="uploadFileInput" label="Upload file(s)" accept="*/*"
+                    :multiple="true"></v-file-input>
                   <v-checkbox v-model="expandZipfiles" label="Expand zipfile(s)"
                     hint="Submit files in zip archive one by one" class="ma-10 mt-2 mb-5"></v-checkbox>
                   <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
