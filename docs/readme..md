@@ -503,9 +503,183 @@ The toggle *showQRCode* is managed by the user in a new checkbox in the Settings
 
 
 # Introduce Bucket Management
-  * Save/Retrieve bucket details to Local Storage
-  * Add Bucket Management panel
-  * Add Radio Buttons to switch between buckets
+Until this point, a single bucket could be access through the OCI File Manager and its PAR was hard coded. This features introduces the ability for a user to add buckets to explore, to switch between these buckets and to have the buckets remembered across sessions. The user can also indicate whether a PAR is for reading and/or writing objects and the tool's UI adapts to that setting.
+
+## Add Bucket Management panel
+A new panel is added to the expansion panels component in file `App.vue`. It contains a v-data-table based on the collection of rememberedBuckets in filesStore (more about those later). For each entry in that collection, a record is shown with label and bucket name and icons for editing and deleting the bucket. A button is included for adding new buckets. 
+
+```
+<v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
+                expand-icon="mdi-pail-outline">
+    <v-expansion-panel-text>
+        <v-data-table :headers="bucketHeaders" :items="filesStore.rememberedBuckets" item-key="bucketName"
+                    class="elevation-1">
+            <template v-slot:item.actions="{ item, index }">
+                <v-icon small @click="editBucket(item, index)">
+                    mdi-pencil
+                </v-icon>
+                <v-icon small @click="removeBucket(item, index)">
+                    mdi-delete
+                </v-icon>
+            </template>
+        </v-data-table>
+        <v-btn prepend-icon="mdi-pail-plus-outline" @click="addAndEditBucket()" class="mt-4 mb-5">
+         Add Bucket
+         </v-btn>
+    </v-expansion-panel-text>
+</v-expansion-panel>
+``` 
+![](images/bucket-mgt.png)
+
+The code in `App.vue` that underpins this panel - and the bucket edit dialog - is as follows: 
+
+```
+const selectedBucket = ref(null)
+const bucketToEdit = ref(null) // backs the bucket editor dialog
+const showBucketEditorPopup = ref(false) // toggle for displaying/hiding the bucket dialog
+
+const bucketName = computed(() => {
+  if (!selectedBucket.value) return null
+  return extractBucketName(selectedBucket.value.bucketPAR)
+})
+
+const extractBucketName = (bucketPAR) => {
+  const start = bucketPAR.indexOf('/b/') + 3
+  const end = bucketPAR.substring(start).indexOf('/o')
+  return bucketPAR.substring(start, start + end)
+}
+
+const bucketHeaders = ref([
+  { title: 'Label', value: 'label' },
+  { title: 'Name', value: 'bucketName' },
+  { title: 'Actions', value: 'actions' }
+])
+
+const editBucket = (bucket, index) => {
+  bucketToEdit.value = bucket
+  showBucketEditorPopup.value = true
+}
+const removeBucket = (bucket, index) => {
+  filesStore.removeBucket(bucket.bucketName)
+}
+
+const saveBucket = () => {
+  bucketToEdit.value.bucketName = extractBucketName(bucketToEdit.value.bucketPAR)
+  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description, bucketToEdit.value.readAllowed, bucketToEdit.value.writeAllowed)
+  showBucketEditorPopup.value = false
+}
+
+const addAndEditBucket = () => {
+  bucketToEdit.value = {
+    bucketName: "", label: "New Bucket", description: "", bucketPAR: ""
+  }
+  showBucketEditorPopup.value = true
+}
+
+const initializeBucket = (bucket) => {
+  filesStore.setPAR(bucket.bucketPAR)
+  labelForShare.value = bucket.label
+}
+
+watch(selectedBucket, (newVal, oldVal) => {
+  if (!newVal) return
+  initializeBucket(newVal)
+})
+```
+
+The popup for editing bucket details:
+```
+  <v-dialog v-model="showBucketEditorPopup" max-width="800px">
+    <v-card>
+      <v-card-title>Bucket Editor</v-card-title>
+      <v-card-text>
+        <v-text-field v-model="bucketToEdit.label" label="Label"></v-text-field>
+        <v-text-field v-model="bucketToEdit.bucketPAR" label="Pre Authenticated Request URL"
+          hint="enter the PAR for a Bucket in OCI Object Storage (with at least read and list objects privileges)"></v-text-field>
+        <v-text-field v-model="bucketToEdit.description" label="Description"></v-text-field>
+        <v-checkbox v-model="bucketToEdit.readAllowed" label="Read Allowed" class="mt-1"></v-checkbox>
+        <v-checkbox v-model="bucketToEdit.writeAllowed" label="Write Allowed" class="mt-1"></v-checkbox>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="blue darken-1" text @click="showBucketEditorPopup = false">Cancel</v-btn>
+        <v-btn color="blue darken-1" text @click="saveBucket">Save</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+```  
+
+![](images/bucket-editor-popup.png)
+
+
+## Save/Retrieve bucket details to Local Storage
+
+In file *filesStore.js*, logic is added to store bucket details in the browser *localstorage*. This preserves these details across sessions with the OCI File Manager so the user does not have to provide the PAR details again and again - and these details are also not hard coded.
+
+Here is the code that retrieves the bucket details from the localstorage upon startup of the tool:
+
+```
+  const localStorageKeyForRememberedBuckets = 'rememberedBuckets';
+  const rememberedBuckets = ref([])
+
+  const initializeRememberedBuckets = () => {
+    const bucketsFromLocalStorage = localStorage.getItem(localStorageKeyForRememberedBuckets);
+    if (bucketsFromLocalStorage) {
+      rememberedBuckets.value = JSON.parse(bucketsFromLocalStorage);
+    }
+  }
+
+  initializeRememberedBuckets()
+```
+To save changes to the localstorage, this code is relevant:
+```
+  const saveBucket = (bucketName, bucketPAR, label, description, read = true, write = true) => {
+    let bucket = rememberedBuckets.value.find(bucket => bucket.bucketName === bucketName);
+    if (!bucket) {
+      bucket = { bucketName, bucketPAR, label, description, readAllowed: read, writeAllowed: write }
+      rememberedBuckets.value.push(bucket)
+    } else {
+      bucket.bucketPAR = bucketPAR
+      bucket.label = label
+      bucket.description = description
+      bucket.readAllowed = read
+      bucket.writeAllowed = write
+    }
+    localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
+    return bucket
+  }
+
+  const removeBucket = (bucketName) => {
+    rememberedBuckets.value = rememberedBuckets.value.filter(bucket => bucket.bucketName !== bucketName)
+    localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
+  }
+
+  return { ..., saveBucket, rememberedBuckets, removeBucket }
+  ```
+
+
+## Add Radio Buttons to switch between buckets
+
+Select the current bucket/switch between buckets:
+
+...
+        </v-row>
+        <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail>
+          <v-img src="mdi-folder-outline"></v-img>
+          <v-icon large>
+            mdi-pail-outline
+          </v-icon>
+          <h2>OCI Buckets</h2>
+          <v-divider class="my-10"></v-divider>
+          <v-radio-group v-model="selectedBucket" row>
+            <v-radio v-for="item in filesStore.rememberedBuckets" :key="item.bucketName" :label="item.label"
+              :value="item" :title="item.bucketName + ' - ' + item.description"></v-radio>
+          </v-radio-group>
+        </v-navigation-drawer>
+      </v-container>
+    </v-main>
+```
+![](images/switch-buckets-radio.png)
 
 # Add Deployment to GitHub Pages
 
