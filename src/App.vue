@@ -29,13 +29,8 @@ const labelForShare = ref(null)
 
 const downloadMultipleFilesAsZip = ref(false)
 
-const bucketPAR = ref(null)
 const bucketName = computed(() => {
-  // /b/website/o/
-  // find the substring that starts after /b/ and ends before /o
-  // return the substring
   if (!selectedBucket.value) return null
-
   return extractBucketName(selectedBucket.value.bucketPAR)
 })
 
@@ -93,7 +88,6 @@ const addAndEditBucket = () => {
 
 const initializeBucket = (bucket) => {
   filesStore.setPAR(bucket.bucketPAR)
-  bucketPAR.value = bucket.bucketPAR
   nameOfDownloadZipFile.value = bucket.bucketName + ".zip"
   labelForShare.value = bucket.label
 }
@@ -101,7 +95,6 @@ const initializeBucket = (bucket) => {
 
 // when bucketPAR changes, inform filestore to refresh
 watch(selectedBucket, (newVal, oldVal) => {
-  console.log('selectedBucket changed', newVal, oldVal)
   if (!newVal) return
   initializeBucket(newVal)
 })
@@ -125,7 +118,6 @@ onMounted(() => {
     const writeAllowed = permissions.includes('w')
     const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed)
     selectedBucket.value = bucket
-    initializeBucket(bucket)
   }
 })
 
@@ -191,14 +183,14 @@ const submitData = () => {
 }
 
 
-const handleFileUpload = async (event) => {
-  const files = event.target.files;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    console.log(file.name, file.type, file.size, file.lastModified);
+// const handleFileUpload = async (event) => {
+//   const files = event.target.files;
+//   for (let i = 0; i < files.length; i++) {
+//     const file = files[i];
+//     console.log(file.name, file.type, file.size, file.lastModified);
 
-  }
-}
+//   }
+// }
 
 watch(downloadMultipleFilesAsZip, () => {
   for (let node of filesTree.value) {
@@ -226,7 +218,6 @@ const downloadZipfile = () => {
   // create a collection of all key values in selectedKey.value
   const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
   exportFilesToZip(selectedFiles, nameOfDownloadZipFile.value)
-
 }
 
 
@@ -378,8 +369,7 @@ const expandNode = (node) => {
               <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline"
                 v-if="selectedBucket?.writeAllowed">
                 <v-expansion-panel-text>
-                  <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
-                    :multiple="true"></v-file-input>
+                  <v-file-input id="uploadedFile" label="Upload file(s)" accept="*/*" :multiple="true"></v-file-input>
                   <v-checkbox v-model="expandZipfiles" label="Expand zipfile(s)"
                     hint="Submit files in zip archive one by one" class="ma-10 mt-2 mb-5"></v-checkbox>
                   <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
@@ -392,7 +382,8 @@ const expandNode = (node) => {
               <v-expansion-panel title="Download" collapse-icon="mdi-download" expand-icon="mdi-download-outline"
                 v-if="selectedBucket?.readAllowed">
                 <v-expansion-panel-text>
-                  <v-checkbox v-model="downloadMultipleFilesAsZip" label="Allow multiple file download as singe zipfile"
+                  <v-checkbox v-model="downloadMultipleFilesAsZip"
+                    label="Allow multiple file download as single zipfile"
                     hint="Select multiple files and download them as a single zip file"
                     class="ma-10 mt-2 mb-5"></v-checkbox>
                   <v-text-field v-model="nameOfDownloadZipFile" label="Zip filename"
@@ -423,7 +414,6 @@ const expandNode = (node) => {
               <v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
                 expand-icon="mdi-pail-outline">
                 <v-expansion-panel-text>
-
                   <v-data-table :headers="bucketHeaders" :items="filesStore.rememberedBuckets" item-key="bucketName"
                     class="elevation-1">
                     <template v-slot:item.actions="{ item, index }">

@@ -98,28 +98,10 @@ export const useFilesStore = defineStore('filesStore', () => {
     }
   }
 
-
-
-  const findFolders = (name, folderNames, path, parent) => {
-    console.log(name, path)
-    if (name.includes('/')) {
-      let folderName = (path ? path + '/' : '') + name.split('/')[0]
-      // let name be name without the folder prefix
-      if (!folderNames.includes(folderName)) {
-        console.log('in find folders' + folderName)
-        folderNames.push(folderName)
-        const folder = parent.children.push({ name: folderName, children: [] })
-        findFolders(name.substring(folderName.length + 1), folderNames, folder)
-      }
-    }
-  }
-
   const processFileObjects = (fileObjects) => {
     const nestedStructure = createNestedStructure(fileObjects.map(fileObject => fileObject.name));
     foldersInBucket.value = foldersInBucket.value.sort()
     filesAndFolders.value = nestedStructure
-    console.log(JSON.stringify(nestedStructure, null, 2));
-
   }
 
   const processFolder = (folder, parentNode) => {
