@@ -299,6 +299,7 @@ The Tree component allows custom templates to be defined for specific node types
                   v-if="(slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
   </template>
 </Tree>
+![](images/download-link.png)
 
 ## Add Expand All/Collapse all icons  
 A fairly simple feature to add: icons for expanding all folders and nested folders in the tree and for collapsing all currently expanded folders. All changes are in file `App.vue`
@@ -310,6 +311,7 @@ The icons are added like this:
   <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3" title="Collapse all expanded (nested) folders"></v-icon>
 </div>
 ```
+![](images/expand-collapse-icons.png)
 
 The tree is given the expandedKeys attribute
 ```
@@ -340,6 +342,186 @@ const expandNode = (node) => {
   }
 };
 ```
+
+# Expandable Panels for Settings, Upload and More
+The UI has a set of expandable panels for various purposes. Some of these will become apparent later on. Let's for now discuss the Upload and Settings panels.
+
+The overall page grid is created using the Vuetify container with a single row and two columns that each get half of the page real estate. The left half contains the tree, the right half the panels - using v-expansion-panels. Note: only one panel can be expanded at a time.
+
+The Upload panel contains the components we saw before - to allow the use to upload one or multiple files (from client device to browser) and send it from browser to bucket.  
+
+```
+ <v-container fluid>
+    <v-row>
+        <v-col cols="6">
+            <Tree :value="filesTree" ...></Tree>
+        </v-col>
+        <v-col cols=" 4" offset="1" mr="10">
+            <v-expansion-panels :multiple="false">
+              <v-expansion-panel title="Upload File(s)" collapse-icon="mdi-upload" expand-icon="mdi-upload-outline">
+                <v-expansion-panel-text>
+                  <v-file-input id="uploadedFile" label="Upload file(s)" @change="handleFileUpload" accept="*/*"
+                    :multiple="true"></v-file-input>
+                  <v-checkbox v-model="expandZipfiles" label="Expand zipfile(s)"
+                    hint="Submit files in zip archive one by one" class="ma-10 mt-2 mb-5"></v-checkbox>
+                  <v-combobox v-model="targetFolder" :items="filesStore.foldersInBucket" label="Target Folder"
+                    hint="Optionally select or define a folder to upload the file(s) to"
+                    append-icon="mdi-folder-arrow-up" persistent-hint class="ma-10 mt-2 mb-5" </v-combobox>
+                    <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
+                    <v-img src="mdi-folder-outline"></v-img>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+              <v-expansion-panel title="Settings" collapse-icon="mdi-cog-outline" expand-icon="mdi-cog-outline">
+                <v-expansion-panel-text>
+                  <v-checkbox v-model="showImageThumbnails" label="Show Image Thumbnails"
+                    hint="Show thumbnail images in file tree for files of type jpg, gif, png"
+                    class="mt-2 "></v-checkbox>                 
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+        </v-col>
+    </v-row>
+</v-container>
+```
+![](images/panels.png)
+
+The JavaScript that supports the components in the expansion panels is roughly the following:
+```
+const targetFolder = ref(null)
+const expandZipfiles = ref(false)
+const showImageThumbnails = ref(false) // toggle for showing thumbnails in file tree for images 
+
+const submitData = () => {
+  const fileInput = document.getElementById('uploadedFile');
+  const files = fileInput.files;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file) {
+      if (expandZipfiles.value && file.name.toLowerCase().endsWith('.zip')) {
+        const zip = new JSZip();
+        zip.loadAsync(file).then(async (contents) => {
+          const files = Object.values(contents.files);
+          for (const file of files) {
+            const blob = await zip.file(file.name).async('blob')
+            const relativePath = (targetFolder.value ? targetFolder.value + '/' : '') + (file.dir ? file.dir + '/' + file.name : file.name)
+            filesStore.submitBlob(blob, relativePath)
+          }
+        })
+      } else {
+        filesStore.submitBlob(file, (targetFolder.value ? targetFolder.value + '/' : '') + file.name)
+      }
+    }
+  }
+  fileInput.value = ''
+}
+
+```
+
+# Add generation of QR Code for selected file
+When a file is selected in the tree file explorer, then a QR Code is generated and displayed under the tree. This QR Code contains a direct download URL: when the code is scanned for example on a mobile device this results typically in the file being opened on the device. Through this QR Code, it becomes exceedingly simple to get a file from a bucket on Oracle Cloud to your phone.
+
+To generate a QR Code, we make use of a popular library called `qrcode`, to be installed with
+```
+npm install qrcode --save
+```
+
+In file `App.vue`, a number of changes need to be made. First import the library:
+```
+import QRCode from 'qrcode'
+```
+
+Next, define a function `renderQRCode`. This function is invoked with a string (muyurl) and generates a QRCode that contains that string. The image of the QRCode is rendered in the HTML element with id *canvas* that is supposed to be of type canvas.
+
+```
+const renderQRCode = (myurl) => {
+  var opts = {
+    errorCorrectionLevel: 'H',
+    type: 'image/jpeg',
+    quality: 0.3,
+    margin: 1,
+    scale: 5,
+    color: {
+      dark: "#010599FF",
+      light: "#FFFFFF"
+    }
+  }
+  var canvas = document.getElementById('canvas')
+
+  QRCode.toCanvas(canvas, myurl, opts, function (error) {
+    if (error) console.error(error)
+  })
+}
+```
+
+The function is invoked when a file node is selected in the tree. The files nodes already have a `selectable:true` property. The tree is extended with event handlers for node-select and node-unselect. Under the tree is a new div element that shows a header with the name of the selected file and a canvas element that will contain and display the QR Code :
+```
+ <Tree :value="filesTree" ...  selectionMode="single" @node-select="nodeSelect" @node-unselect="nodeUnselect">
+</Tree>
+<div v-if="showQRCode ">
+    <h2 v-if="qrcodeFile">QR Code for {{ qrcodeFile }}</h2>
+    <canvas id="canvas"></canvas>
+</div>
+```
+![](images/qrcode-under-tree.png)
+
+The functions nodeSelect and nodeUnselect:
+```
+const nodeSelect = (node) => {
+  if (node.nodeType === 'file') {
+    const url = filesStore.PAR.value + node.data
+    qrcodeFile.value = node.data
+    renderQRCode(url)
+  }
+}
+
+const nodeUnselect = (node) => {
+  const canvas = document.getElementById('canvas')
+  if (canvas) canvas.width = canvas.width; // clears the canvas content
+  qrcodeFile.value = null
+}
+```
+
+Two variables are introduced as well:
+```
+const showQRCode = ref(false)
+const qrcodeFile = ref(null)
+```
+
+The first one is a boolean that indicates whether QR Code should indeed be displayed when a file is selected. The second one contains the name of the file for which currently a QR Code is displayed.
+
+The toggle *showQRCode* is managed by the user in a new checkbox in the Settings Panel:
+```
+ <v-expansion-panel title="Settings" collapse-icon="mdi-cog-outline" expand-icon="mdi-cog-outline">
+    <v-expansion-panel-text>
+        ...
+        <v-checkbox v-model="showQRCode" label="Show QR Code for selected file"
+                    hint="Show a QR Code for downloading the file currently selected in the tree" class=""></v-checkbox>
+    </v-expansion-panel-text>
+</v-expansion-panel>
+```              
+![](images/show-thumbnails-setting.png)
+
+
+# Introduce Bucket Management
+  * Save/Retrieve bucket details to Local Storage
+  * Add Bucket Management panel
+  * Add Radio Buttons to switch between buckets
+
+# Add Deployment to GitHub Pages
+
+# Add the ability to download multiple files in a single zip file
+  * Create Download Panel
+  * Allow Selection of Files and Folders
+  * Collect selected files into a Zip file
+  * Save the zip file with the specified name
+  * Add Select All/Unselect All icons
+
+
+# Allow Share URL feature to provide direct access to a Bucket through OCI File Manager using a single URL
+  * Introduce logic to interpret query parameters
+  * Add Share tab with label and permission checkboxes
+  * Generate Share URL
+  * Add QR Code for Share URL
 
 # Resouces
 
