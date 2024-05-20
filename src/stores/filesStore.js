@@ -45,7 +45,6 @@ export const useFilesStore = defineStore('filesStore', () => {
 
 
   const refreshFiles = () => {
-
     fetch(PAR.value, { method: 'GET' })
       .then(response => response.json())
       .then(data => {
@@ -99,6 +98,7 @@ export const useFilesStore = defineStore('filesStore', () => {
   }
 
   const processFileObjects = (fileObjects) => {
+    foldersInBucket.value = []
     const nestedStructure = createNestedStructure(fileObjects.map(fileObject => fileObject.name));
     foldersInBucket.value = foldersInBucket.value.sort()
     filesAndFolders.value = nestedStructure
