@@ -32,7 +32,7 @@ const nameOfDownloadZipFile = ref(null)
 const allowReadInShare = ref(true)
 const allowWriteInShare = ref(true)
 const labelForShare = ref(null)
-
+const contextFolderForShare = ref(null)
 const downloadMultipleFilesAsZip = ref(false)
 
 const bucketName = computed(() => {
@@ -46,6 +46,10 @@ const computedBucketShareURL = computed(() => {
     + '?bucketPAR=' + selectedBucket.value.bucketPAR
     + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
     + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
+    + '&contextFolder=' + encodeURIComponent(selectedBucket.value.contextFolder ? selectedBucket.value.contextFolder : '')
+    + encodeURIComponent((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : ''
+      + (contextFolderForShare.value ? contextFolderForShare.value : '')
+    )
 })
 
 watch(computedBucketShareURL, () => {
@@ -124,7 +128,8 @@ onMounted(() => {
     const readAllowed = permissions.includes('r')
     // write is true if permissions contains w
     const writeAllowed = permissions.includes('w')
-    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed)
+    const contextFolder = urlParams.get('contextFolder')
+    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
     selectedBucket.value = bucket
   }
 })
@@ -430,6 +435,8 @@ const expandNode = (node) => {
                 <v-expansion-panel-text>
                   <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
                     label="Label"></v-text-field>
+                  <v-text-field v-model="contextFolderForShare" default-value="" label="Context Folder"
+                    hint="Optionally indicate a (nested) folder that this share should restrict access to"></v-text-field>
                   <v-checkbox v-model="allowReadInShare" label="Allow Read Access"
                     v-if="selectedBucket?.readAllowed"></v-checkbox>
                   <v-checkbox v-model="allowWriteInShare" label="Allow Write Access"
