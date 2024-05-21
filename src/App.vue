@@ -40,16 +40,44 @@ const bucketName = computed(() => {
   return extractBucketName(selectedBucket.value.bucketPAR)
 })
 
+const encodeString = (input) => {
+  // Convert the string to base64
+  let encoded = btoa(input);
+  // Make the base64 string URL-safe
+  encoded = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return encoded;
+}
+
+const decodeString = (encoded) => {
+  // Revert the URL-safe base64 string back to a standard base64 string
+  let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+
+  // Pad the base64 string with '=' to make it valid
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+
+  // Decode the base64 string
+  const decoded = atob(base64);
+
+  return decoded;
+}
+
+
+
 const computedBucketShareURL = computed(() => {
   if (!selectedBucket.value) return null
-  return window.location.origin + window.location.pathname
-    + '?bucketPAR=' + selectedBucket.value.bucketPAR
+
+  const shareableURLQueryParams = encodeString('bucketPAR=' + selectedBucket.value.bucketPAR
     + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
     + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
     + '&contextFolder=' + encodeURIComponent(selectedBucket.value.contextFolder ? selectedBucket.value.contextFolder : '')
     + encodeURIComponent((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : ''
       + (contextFolderForShare.value ? contextFolderForShare.value : '')
-    )
+    ))
+
+  const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + shareableURLQueryParams
+  return shareableURL
 })
 
 watch(computedBucketShareURL, () => {
@@ -130,6 +158,19 @@ onMounted(() => {
     const writeAllowed = permissions.includes('w')
     const contextFolder = urlParams.get('contextFolder')
     const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
+    selectedBucket.value = bucket
+  }
+  if (urlParams.has('shareableQueryParams')) {
+    const shareableQueryParams = urlParams.get('shareableQueryParams')
+    const shareableURLQueryParams = decodeString(shareableQueryParams)
+    const shareableURLParts = shareableURLQueryParams.split('&')
+    const bucketPAR = shareableURLParts[0].split('=')[1]
+    const label = shareableURLParts[1].split('=')[1]
+    const permissions = shareableURLParts[2].split('=')[1]
+    const readAllowed = permissions.includes('r')
+    const writeAllowed = permissions.includes('w')
+    const contextFolder = shareableURLParts[3].split('=')[1]
+    const bucket = filesStore.saveBucket(extractBucketName(bucketPAR), bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
     selectedBucket.value = bucket
   }
 })
