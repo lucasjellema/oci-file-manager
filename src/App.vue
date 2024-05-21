@@ -6,6 +6,7 @@ import { useFilesStore } from "./stores/filesStore";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import QRCode from 'qrcode'
+import { v4 as uuidv4 } from 'uuid';
 
 import Tree from 'primevue/tree';
 
@@ -79,13 +80,15 @@ const removeBucket = (bucket, index) => {
 
 const saveBucket = () => {
   bucketToEdit.value.bucketName = extractBucketName(bucketToEdit.value.bucketPAR)
-  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description, bucketToEdit.value.readAllowed, bucketToEdit.value.writeAllowed)
+  console.log('id', bucketToEdit.value.id)
+  filesStore.saveBucket(bucketToEdit.value.bucketName, bucketToEdit.value.bucketPAR, bucketToEdit.value.label, bucketToEdit.value.description
+    , bucketToEdit.value.readAllowed, bucketToEdit.value.writeAllowed, bucketToEdit.value.id, bucketToEdit.value.contextFolder)
   showBucketEditorPopup.value = false
 }
 
 const addAndEditBucket = () => {
   bucketToEdit.value = {
-    bucketName: "", label: "New Bucket", description: "", bucketPAR: ""
+    bucketName: "", label: "New Bucket", description: "", bucketPAR: "", id: uuidv4()
   }
   showBucketEditorPopup.value = true
 }
@@ -495,6 +498,9 @@ const expandNode = (node) => {
         <v-text-field v-model="bucketToEdit.label" label="Label"></v-text-field>
         <v-text-field v-model="bucketToEdit.bucketPAR" label="Pre Authenticated Request URL"
           hint="enter the PAR for a Bucket in OCI Object Storage (with at least read and list objects privileges)"></v-text-field>
+
+        <v-text-field v-model="bucketToEdit.contextFolder" label="Context Folder"
+          hint="specify the context folder path in the bucket that should be used as context"></v-text-field>
         <v-text-field v-model="bucketToEdit.description" label="Description"></v-text-field>
         <v-checkbox v-model="bucketToEdit.readAllowed" label="Read Allowed" class="mt-1"></v-checkbox>
         <v-checkbox v-model="bucketToEdit.writeAllowed" label="Write Allowed" class="mt-1"></v-checkbox>

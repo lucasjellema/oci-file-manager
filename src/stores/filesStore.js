@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-
+import { v4 as uuidv4 } from 'uuid';
 
 export const useFilesStore = defineStore('filesStore', () => {
   const PAR = ref(null)
@@ -17,10 +17,12 @@ export const useFilesStore = defineStore('filesStore', () => {
 
   initializeRememberedBuckets()
 
-  const saveBucket = (bucketName, bucketPAR, label, description, read = true, write = true) => {
-    let bucket = rememberedBuckets.value.find(bucket => bucket.bucketName === bucketName);
+  const saveBucket = (bucketName, bucketPAR, label, description, read = true, write = true, id = null, contextFolder = null) => {
+    console.log('fileStore saveBucket bucketid', id)
+
+    let bucket = rememberedBuckets.value.find(bucket => id == bucket.id);
     if (!bucket) {
-      bucket = { bucketName, bucketPAR, label, description, readAllowed: read, writeAllowed: write }
+      bucket = { bucketName, bucketPAR, label, description, readAllowed: read, writeAllowed: write, id: uuidv4(), contextFolder }
       rememberedBuckets.value.push(bucket)
     } else {
       bucket.bucketPAR = bucketPAR
@@ -28,6 +30,7 @@ export const useFilesStore = defineStore('filesStore', () => {
       bucket.description = description
       bucket.readAllowed = read
       bucket.writeAllowed = write
+      bucket.contextFolder = contextFolder
     }
     localStorage.setItem(localStorageKeyForRememberedBuckets, JSON.stringify(rememberedBuckets.value));
     return bucket

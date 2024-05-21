@@ -20,6 +20,7 @@
     "pinia": "^2.1.7",
     "primevue": "^3.52.0",
     "qrcode": "^1.5.3",
+    "uuid": "^9.0.1",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vuetify": "^3.6.0-beta.0.0"
