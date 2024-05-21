@@ -1,5 +1,6 @@
 <script setup>
 
+const version = '0.3.2'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -59,6 +60,11 @@ const decodeString = (encoded) => {
 
   // Decode the base64 string
   const decoded = atob(base64);
+
+  // %2F should be replaced with / in the decoded string
+  decoded.replace(/\//g, '%2F');
+  // %20 should be replaced with space in the decoded string
+  decoded.replace(/\+/g, '%20');
 
   return decoded;
 }
@@ -371,7 +377,7 @@ const expandNode = (node) => {
 
   <v-app>
     <v-app-bar app>
-      <v-toolbar-title>OCI File Manager (aka The Bucket Browser)
+      <v-toolbar-title>OCI File Manager (aka The Bucket Browser) v{{ version }}
       </v-toolbar-title>
       <v-img src="/app-bar-background-conclusion.jpg" height="80"></v-img>
 
@@ -381,7 +387,7 @@ const expandNode = (node) => {
         <v-row>
           <v-col cols="6">
             <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')'
-              + (!selectedBucket?.writeAllowed ? '(read only)' : '') }}</h2>
+        + (!selectedBucket?.writeAllowed ? '(read only)' : '') }}</h2>
             <v-container fluid v-if="selectedBucket">
               <v-row>
                 <v-col cols="6">
@@ -414,7 +420,7 @@ const expandNode = (node) => {
                 <div v-if="selectedBucket?.readAllowed">
                   <a :href="selectedBucket.bucketPAR + (selectedBucket.contextFolder ? selectedBucket.contextFolder + '/' : '') + slotProps.node.data"
                     target="_blank" rel="noopener noreferrer" class="text-700 hover:text-primary">{{
-              slotProps.node.label }}</a>
+        slotProps.node.label }}</a>
                   <v-img height="50"
                     :src="selectedBucket.bucketPAR + (selectedBucket.contextFolder ? selectedBucket.contextFolder + '/' : '') + slotProps.node.data"
                     class="thumbnail"
