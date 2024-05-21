@@ -95,6 +95,7 @@ const addAndEditBucket = () => {
 
 const initializeBucket = (bucket) => {
   filesStore.setPAR(bucket.bucketPAR)
+  filesStore.setBucketContextFolder(bucket.contextFolder)
   nameOfDownloadZipFile.value = bucket.bucketName + ".zip"
   labelForShare.value = bucket.label
 }
@@ -365,9 +366,12 @@ const expandNode = (node) => {
               </template>
               <template #file="slotProps">
                 <div v-if="selectedBucket?.readAllowed">
-                  <a :href="selectedBucket.bucketPAR + slotProps.node.data" target="_blank" rel="noopener noreferrer"
-                    class="text-700 hover:text-primary">{{ slotProps.node.label }}</a>
-                  <v-img height="50" :src="selectedBucket.bucketPAR + slotProps.node.data" class="thumbnail"
+                  <a :href="selectedBucket.bucketPAR + (selectedBucket.contextFolder ? selectedBucket.contextFolder + '/' : '') + slotProps.node.data"
+                    target="_blank" rel="noopener noreferrer" class="text-700 hover:text-primary">{{
+              slotProps.node.label }}</a>
+                  <v-img height="50"
+                    :src="selectedBucket.bucketPAR + (selectedBucket.contextFolder ? selectedBucket.contextFolder + '/' : '') + slotProps.node.data"
+                    class="thumbnail"
                     v-if="showImageThumbnails && (slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
                 </div>
                 <div v-else>

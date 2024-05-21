@@ -46,18 +46,30 @@ export const useFilesStore = defineStore('filesStore', () => {
     refreshFiles()
   }
 
+  const bucketContextFolder = ref(null)
+  const setBucketContextFolder = (contextFolder) => {
+    bucketContextFolder.value = contextFolder
+  }
+
   const refreshFiles = () => {
     fetch(PAR.value, { method: 'GET' })
       .then(response => response.json())
       .then(data => {
-        bucketContents.value = data.objects
-        processFileObjects(data.objects)
+        //    //  bucketContents.value = data.objects.filter(object => object.name.startsWith(  '/'))
+        const limitedScope = (bucketContextFolder.value != null)
+        const context = bucketContextFolder.value + '/'
+        // map objects: remove string context from object.name
+
+        processFileObjects(data.objects.filter(object => limitedScope ? object.name.startsWith(context) : true)
+          .map(fileObject => { return { name: fileObject.name.replace(context, '') } })
+        )
       })
   }
 
   const getFile = (filename) => {
     return new Promise((resolve, reject) => {
-      fetch(PAR.value, { method: 'GET' })
+      const targetURL = PAR.value + (bucketContextFolder.value ? (bucketContextFolder.value + '/') : '') + filename
+      fetch(targetURL, { method: 'GET' })
         .then(response => response.blob())
         .then(blob => {
           resolve(blob);
@@ -66,7 +78,7 @@ export const useFilesStore = defineStore('filesStore', () => {
   }
 
   const foldersInBucket = ref([])
-  const bucketContents = ref([])
+  //  const bucketContents = ref([])
   const filesAndFolders = ref([])
 
   const createNestedStructure = (paths) => {
@@ -114,7 +126,6 @@ export const useFilesStore = defineStore('filesStore', () => {
           label: childFolder.name,
           data: folder.name,
           icon: 'mdi mdi-folder-outline',
-          styleClass: `treekey|folder|${childFolder.name}`,
           nodeType: 'folder',
           type: 'folder',
           leaf: false,
@@ -132,7 +143,6 @@ export const useFilesStore = defineStore('filesStore', () => {
           label: file.name,
           data: file.fullPath,
           icon: 'mdi mdi-file-outline',
-          styleClass: `treekey|file|${file.name}`,
           nodeType: 'file',
           type: 'file',
           leaf: true,
@@ -152,7 +162,6 @@ export const useFilesStore = defineStore('filesStore', () => {
           label: folder.name,
           data: folder.name,
           icon: 'mdi mdi-folder-outline',
-          styleClass: `treekey|folder|${folder.name}`,
           nodeType: 'folder',
           type: 'folder',
           leaf: false,
@@ -170,7 +179,6 @@ export const useFilesStore = defineStore('filesStore', () => {
           label: file.name,
           data: file.fullPath,
           icon: 'mdi mdi-file-outline',
-          styleClass: `treekey|file|${file.name}`,
           nodeType: 'file',
           type: 'file',
           leaf: true,
@@ -190,7 +198,9 @@ export const useFilesStore = defineStore('filesStore', () => {
       body: blob,
     };
 
-    fetch(PAR.value + filename, fetchOptions)
+    const targetURL = PAR.value + (bucketContextFolder.value ? (bucketContextFolder.value + '/') : '') + filename
+
+    fetch(targetURL, fetchOptions)
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok ' + response.statusText);
@@ -212,5 +222,5 @@ export const useFilesStore = defineStore('filesStore', () => {
       });
   }
 
-  return { refreshFiles, PAR, getFile, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket }
+  return { refreshFiles, PAR, getFile, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket, setBucketContextFolder }
 })
