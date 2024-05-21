@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.2'
+const version = '0.3.3'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -60,13 +60,10 @@ const decodeString = (encoded) => {
 
   // Decode the base64 string
   const decoded = atob(base64);
+  // %2F should be replaced with / in the decoded string, and %20 with space
+  const d1 = decoded.replace(/%2F/g, '/').replace(/%20/g, ' ');
 
-  // %2F should be replaced with / in the decoded string
-  decoded.replace(/\//g, '%2F');
-  // %20 should be replaced with space in the decoded string
-  decoded.replace(/\+/g, '%20');
-
-  return decoded;
+  return d1;
 }
 
 
