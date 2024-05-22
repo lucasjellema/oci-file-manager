@@ -36,6 +36,30 @@ const labelForShare = ref(null)
 const contextFolderForShare = ref(null)
 const downloadMultipleFilesAsZip = ref(false)
 
+const copyPanelIsExpanded = ref(false)
+const targetBucketForCopy = ref(null)
+const targetFolderForCopy = ref(null)
+const copyMultipleFilesAsZip = ref(false)
+const nameOfCopyZipFile = ref(null)
+
+
+const copyfiles = () => {
+  console.log('copyfiles to bucket ' + targetBucketForCopy.value.label + ' and folder ' + targetFolderForCopy.value)
+  const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
+
+  uploadInProgress.value = true
+  progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: selectedFiles.length }
+  const promises = []
+  selectedFiles.forEach(file => {
+    promises.push(new Promise((resolve, reject) => {
+      filesStore.getFile(file).then(blob => {
+        filesStore.submitBlob(blob, (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+      })
+    }))
+  })
+}
+
+
 const bucketName = computed(() => {
   if (!selectedBucket.value) return null
   return extractBucketName(selectedBucket.value.bucketPAR)
@@ -245,15 +269,6 @@ const submitData = async () => {
 }
 
 
-// const handleFileUpload = async (event) => {
-//   const files = event.target.files;
-//   for (let i = 0; i < files.length; i++) {
-//     const file = files[i];
-//     console.log(file.name, file.type, file.size, file.lastModified);
-
-//   }
-// }
-
 watch(downloadMultipleFilesAsZip, () => {
   for (let node of filesTree.value) {
     if (node.nodeType === 'folder') {
@@ -368,6 +383,8 @@ const expandNode = (node) => {
     }
   }
 };
+
+
 </script>
 
 <template>
@@ -393,7 +410,7 @@ const expandNode = (node) => {
                   <v-icon @click="collapseAll" icon="mdi-collapse-all-outline" class="ml-2 mt-3"
                     title="Collapse all expanded (nested) folders"></v-icon>
                 </v-col>
-                <v-col cols="5" v-if="downloadMultipleFilesAsZip">
+                <v-col cols="5" v-if="downloadMultipleFilesAsZip || copyPanelIsExpanded">
                   <v-icon @click="selectAll" icon="mdi-select-all" class="ml-10 mt-3"
                     title="Select all files and (nested) folders"></v-icon>
                   <v-icon @click="unselectAll" icon="mdi-selection-off" class="ml-2 mt-3"
@@ -407,9 +424,9 @@ const expandNode = (node) => {
             </v-container>
             <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
               class="w-full md:w-30rem tree-override" ref="treeref"
-              :selectionMode="downloadMultipleFilesAsZip ? 'checkbox' : 'single'" v-model:expandedKeys="expandedKeys"
-              :filter="true" filterPlaceholder="Enter search term" @node-select="nodeSelect"
-              @node-unselect="nodeUnselect">
+              :selectionMode="downloadMultipleFilesAsZip || copyPanelIsExpanded ? 'checkbox' : 'single'"
+              v-model:expandedKeys="expandedKeys" :filter="true" filterPlaceholder="Enter search term"
+              @node-select="nodeSelect" @node-unselect="nodeUnselect">
               <template #default="slotProps">
                 <b>{{ slotProps.node.label }}</b>
               </template>
@@ -473,6 +490,37 @@ const expandNode = (node) => {
                     class="ma-10 mt-2 mb-5"></v-text-field>
                   <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
                     zip</v-btn>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+              <v-expansion-panel title="Copy" collapse-icon="mdi-transfer" expand-icon="mdi-transfer"
+                v-if="selectedBucket?.readAllowed" @group:selected="copyPanelIsExpanded = $event.value">
+                <v-expansion-panel-text>
+
+                  <v-select v-model="targetBucketForCopy" label="Target Bucket"
+                    hint="Which bucket should files be copied to?" :items="filesStore.rememberedBuckets"
+                    item-title="label" item-value="id" return-object></v-select>
+
+                  <v-text-field v-model="targetFolderForCopy" label="Target Folder (optional)"
+                    hint="optional folder path in target bucket to copy file(s) to - does not need to already exist"
+                    class="ma-10 mt-2 mb-5"></v-text-field>
+                  <v-checkbox v-model="copyMultipleFilesAsZip" label="Copy files as a single zipfile"
+                    hint="Select multiple files and copy them as a single zip file" class="ma-10 mt-2 mb-5"
+                    v-if="TODOSupportCopyAsSingleZip"></v-checkbox>
+                  <v-text-field v-model="nameOfCopyZipFile" label="Zip filename" class="ma-10 mt-2 mb-5"
+                    v-if="copyMultipleFilesAsZip"></v-text-field>
+                  <v-btn @click="copyfiles" prepend-icon="mdi-transfer" mt="30">Copy selected file(s)</v-btn>
+                  <div v-if="uploadInProgress" class="text-center mt-5">
+                    <v-icon icon="mdi-progress-upload"></v-icon>
+                    {{ progressReport.uploadCount }} / {{ progressReport.totalToUpload }} files copied,
+                    {{ progressReport.uploadSize }} bytes copied
+                    <div v-if="progressReport.uploadErrorCount > 0">
+                      {{ progressReport.uploadErrorCount }} file copy actions failed
+                      <div v-for="error in progressReport.uploadErrors">
+                        {{ error }}
+                      </div>
+                    </div>
+                  </div>
+
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">

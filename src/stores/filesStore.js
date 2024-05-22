@@ -192,14 +192,14 @@ export const useFilesStore = defineStore('filesStore', () => {
   }
 
 
-  const submitBlob = async (blob, filename, progressReport) => {
+  const submitBlob = async (blob, filename, progressReport, targetBucketPAR = PAR, includeBucketContextFolderInFilename = true) => {
     const fetchOptions = {
       method: 'PUT',
       body: blob,
     };
 
-    const targetURL = PAR.value + (bucketContextFolder.value ? (bucketContextFolder.value + '/') : '') + filename
-
+    const targetURL = PAR.value + (bucketContextFolder.value && includeBucketContextFolderInFilename ? (bucketContextFolder.value + '/') : '') + filename
+    console.log('targetURL', targetURL)
     fetch(targetURL, fetchOptions)
       .then(response => {
         if (!response.ok) {
@@ -221,6 +221,8 @@ export const useFilesStore = defineStore('filesStore', () => {
         return 1
       });
   }
+
+
 
   return { refreshFiles, PAR, getFile, submitBlob, foldersInBucket, getFilesTree, setPAR, saveBucket, rememberedBuckets, removeBucket, setBucketContextFolder }
 })
