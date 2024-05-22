@@ -42,7 +42,7 @@ This current article describes what was done to modify the original application 
 # Vuetify the Vue 3 application
 Introduce Vuetify (an Open Source UI Library with beautifully handcrafted Vue Components) for a much enhanced User Interface. 
 
-First intall npm module:
+First install npm module:
 ```
 npm install vuetify --save
 npm install vuetify@next --save
@@ -127,7 +127,11 @@ and subsequently make the App use PrimeVue:
 app.use(PrimeVue)
 ```
 
-PrimeVue components are not registered (application wide or at at all, unlike Vuetify). They need to be imported into any view/page/component that uses them.
+PrimeVue components are not registered (application wide or at at all, unlike Vuetify). They need to be imported into any view/page/component that uses them. The tree is imported into App.vue using
+
+```
+import Tree from 'primevue/tree';
+```
 
 
 ## Produce the Nested Data Set to Drive the Tree 
@@ -299,6 +303,7 @@ The Tree component allows custom templates to be defined for specific node types
                   v-if="(slotProps.node.data.toLowerCase().endsWith('.jpg') || slotProps.node.data.toLowerCase().endsWith('.gif') || slotProps.node.data.toLowerCase().endsWith('.png'))"></v-img>
   </template>
 </Tree>
+```
 ![](images/download-link.png)
 
 ## Add Expand All/Collapse all icons  
@@ -655,7 +660,7 @@ To save changes to the localstorage, this code is relevant:
   }
 
   return { ..., saveBucket, rememberedBuckets, removeBucket }
-  ```
+```
 
 
 ## Add Radio Buttons to switch between buckets
@@ -1009,7 +1014,103 @@ const generateQRCodeCodeForShareURL = (shareURL) => {
 
 Anyone who scans this QR Code can subsequently access OCI File Manager in the context of the currently selected bucket. If you can this screenshot, you too can access that bucket (or at least for as long as the PAR underlying the url is valid).
 
-# Resouces
+# Work in a Context Folder within a Bucket
+
+
+
+# Make the Shareable URL Less Readable
+
+
+# Copy files to a target bucket and folder
+
+A panel to allow the user to configure the copy action:
+
+```
+<v-expansion-panel title="Copy" collapse-icon="mdi-transfer" expand-icon="mdi-transfer"
+  v-if="selectedBucket?.readAllowed" @group:selected="copyPanelIsExpanded = $event.value">
+  <v-expansion-panel-text>
+    <v-select v-model="targetBucketForCopy" label="Target Bucket"
+      hint="Which bucket should files be copied to?" :items="filesStore.rememberedBuckets"
+      item-title="label" item-value="id" return-object></v-select>
+    <v-text-field v-model="targetFolderForCopy" label="Target Folder (optional)"
+      hint="optional folder path in target bucket to copy file(s) to - does not need to already exist"
+      class="ma-10 mt-2 mb-5"></v-text-field>                  
+    <v-btn @click="copyfiles" prepend-icon="mdi-transfer" mt="30">Copy selected file(s)</v-btn>
+    <div v-if="uploadInProgress" class="text-center mt-5">
+      <v-icon icon="mdi-progress-upload"></v-icon>
+      {{ progressReport.uploadCount }} / {{ progressReport.totalToUpload }} files copied,
+      {{ progressReport.uploadSize }} bytes copied
+      <div v-if="progressReport.uploadErrorCount > 0">
+        {{ progressReport.uploadErrorCount }} file copy actions failed
+        <div v-for="error in progressReport.uploadErrors">
+          {{ error }}
+        </div>
+      </div>
+    </div>
+  </v-expansion-panel-text>
+</v-expansion-panel>
+```
+![](images/copy-panel.png)
+
+Corresponding reactive variables:
+```
+const copyPanelIsExpanded = ref(false)
+const targetBucketForCopy = ref(null)
+const targetFolderForCopy = ref(null)
+```
+
+Allowing multi select of files in the tree when a copy operation is being defined:
+```
+<v-col cols="5" v-if="downloadMultipleFilesAsZip || copyPanelIsExpanded">
+                  <v-icon @click="selectAll" icon="mdi-select-all" class="ml-10 mt-3"
+                    title="Select all files and (nested) folders"></v-icon>
+                  <v-icon @click="unselectAll" icon="mdi-selection-off" class="ml-2 mt-3"
+                    title="Clear current selection"></v-icon>
+                </v-col>
+                <v-col cols="1">
+                  <v-icon @click="filesStore.refreshFiles" icon="mdi-refresh" class="ml-4 mt-3"
+                    title="Refresh Tree"></v-icon>
+                </v-col>
+              </v-row>
+            </v-container>
+            <Tree :value="filesTree" v-model:selectionKeys="selectedKey" scrollable scrollHeight="700px"
+              class="w-full md:w-30rem tree-override" ref="treeref"
+              :selectionMode="downloadMultipleFilesAsZip || copyPanelIsExpanded ? 'checkbox' : 'single'"
+              ...
+```
+And the logic for perform the copy operation:
+```
+const copyfiles = () => {
+  const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
+
+  uploadInProgress.value = true
+  progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: selectedFiles.length }
+  const promises = []
+  selectedFiles.forEach(file => {
+    promises.push(new Promise((resolve, reject) => {
+      filesStore.getFile(file).then(blob => {
+        filesStore.submitBlob(blob, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
+          + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+      })
+    }))
+  })
+}
+
+```
+A change had to be made in the function submitBlob in store filesStore - to accept the target bucket PAR and a boolean to indicate whether the source bucket's context folder should be included in the filename for the submitted file:
+```
+  const submitBlob = async (blob, filename, progressReport, targetBucketPAR = PAR, includeBucketContextFolderInFilename = true) => {
+    const fetchOptions = {
+      method: 'PUT',
+      body: blob,
+    };
+
+    const targetURL = PAR.value + (bucketContextFolder.value && includeBucketContextFolderInFilename ? (bucketContextFolder.value + '/') : '') + filename
+    ...
+
+```
+
+# Resources
 
 Code demonstrated in this article is in this GitHub Repository https://github.com/lucasjellema/oci-file-manager
 
