@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.3'
+const version = '0.3.4'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
