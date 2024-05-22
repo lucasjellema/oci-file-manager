@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.4'
+const version = '0.3.5'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -49,17 +49,39 @@ const copyfiles = () => {
 
   uploadInProgress.value = true
   progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: selectedFiles.length }
-  const promises = []
-  selectedFiles.forEach(file => {
-    promises.push(new Promise((resolve, reject) => {
-      filesStore.getFile(file).then(blob => {
-        filesStore.submitBlob(blob, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
-          + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
-      })
-    }))
-  })
-}
+  if (copyMultipleFilesAsZip.value) {
+    // create a single zip file from all selected files
 
+    const zip = new JSZip();
+    const promises = [];
+    selectedFiles.forEach(file => {
+      addFileToZip(promises, file, zip);
+    })
+    // only when all files have been added can we generate the zip; that is when all promises are resolved
+    // upload the single zip file - called nameOfCopyZipFile
+
+    Promise.all(promises)
+      .then(results => {
+        // Generate the zip file and trigger download
+        zip.generateAsync({ type: "blob" })
+          .then(function (content) {
+            filesStore.submitBlob(content, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
+              + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + nameOfCopyZipFile.value, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+
+          });
+      })
+  } else { // upload each file individually
+    const promises = []
+    selectedFiles.forEach(file => {
+      promises.push(new Promise((resolve, reject) => {
+        filesStore.getFile(file).then(blob => {
+          filesStore.submitBlob(blob, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
+            + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+        })
+      }))
+    })
+  }
+}
 
 const bucketName = computed(() => {
   if (!selectedBucket.value) return null
@@ -505,8 +527,8 @@ const expandNode = (node) => {
                     hint="optional folder path in target bucket to copy file(s) to - does not need to already exist"
                     class="ma-10 mt-2 mb-5"></v-text-field>
                   <v-checkbox v-model="copyMultipleFilesAsZip" label="Copy files as a single zipfile"
-                    hint="Select multiple files and copy them as a single zip file" class="ma-10 mt-2 mb-5"
-                    v-if="TODOSupportCopyAsSingleZip"></v-checkbox>
+                    hint="Select multiple files and copy them as a single zip file"
+                    class="ma-10 mt-2 mb-5"></v-checkbox>
                   <v-text-field v-model="nameOfCopyZipFile" label="Zip filename" class="ma-10 mt-2 mb-5"
                     v-if="copyMultipleFilesAsZip"></v-text-field>
                   <v-btn @click="copyfiles" prepend-icon="mdi-transfer" mt="30">Copy selected file(s)</v-btn>
