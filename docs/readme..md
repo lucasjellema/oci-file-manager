@@ -1016,7 +1016,150 @@ Anyone who scans this QR Code can subsequently access OCI File Manager in the co
 
 # Work in a Context Folder within a Bucket
 
+This screenshot explains the notion of the Context Folder: a bucket entry can have a context folder defined for it. Instead of working at the root level of the bucket, the OCI File Manager will move its focus to the specified folder (and it nested folders). The bucket contents above the context folder is not visible. 
 
+![](images/context-folder.png)
+
+In the screenshot, an entry is created that uses the OCI Object Storage bucket *TwoDrive*. The label is *Foto's Agile Gilde* and the contexty folder is *my-images/20240521-agile-gilde*. When you checkout the bucket in OCI itself, you will see that it has a folder called my-images that has a folder in turn called 20240521-agile-gilde. In the OCI File Manager UI, all you see for this entry is the contents of the context folder. The user is not aware and cannot access the surrounding context in the bucket (except by changing the context folder setting). This makes it possible to share urls that provide access to a specific subset of files in a bucket - only the files and folders in a specific folder.
+
+This was implemented largely in store `filesStore` by adding the context folder path in the interactions through the bucket PAR URL.
+
+```
+  const submitBlob = async (blob, filename, progressReport) => {
+    const fetchOptions = {
+      method: 'PUT',
+      body: blob,
+    };
+
+    const targetURL = PAR.value + (bucketContextFolder.value ? (bucketContextFolder.value + '/') : '') + filename
+    fetch(targetURL, fetchOptions)
+      .then(response => {
+    ...
+```
+
+and
+```
+  const getFile = (filename) => {
+    return new Promise((resolve, reject) => {
+      const targetURL = PAR.value + (bucketContextFolder.value ? (bucketContextFolder.value + '/') : '') + filename
+      fetch(targetURL, { method: 'GET' })
+        .then(response => response.blob())
+        .then(blob => {
+          ...
+```
+
+To ensure only files are shown in the context folder, function refreshFiles is modified, to filter the set of objects returned when listing the contents of the bucket:
+```
+const refreshFiles = () => {
+    fetch(PAR.value, { method: 'GET' })
+      .then(response => response.json())
+      .then(data => {
+        //    //  bucketContents.value = data.objects.filter(object => object.name.startsWith(  '/'))
+        const limitedScope = (bucketContextFolder.value != null)
+        const context = bucketContextFolder.value + '/'
+        // map objects: remove string context from object.name
+
+        processFileObjects(data.objects.filter(object => limitedScope ? object.name.startsWith(context) : true)
+          .map(fileObject => { return { name: fileObject.name.replace(context, '') } })
+        )
+      })
+```      
+
+Small changes are made to the logic for saving a bucket, to support the context folder:
+```
+  const saveBucket = (bucketName, bucketPAR, label, description, read = true, write = true, id = null, contextFolder = null) => {
+    let bucket = rememberedBuckets.value.find(bucket => id == bucket.id);
+    if (!bucket) {
+      bucket = { bucketName, bucketPAR, label, description, readAllowed: read, writeAllowed: write, id: uuidv4(), contextFolder }
+      rememberedBuckets.value.push(bucket)
+    } else {
+      bucket.bucketPAR = bucketPAR
+      bucket.label = label
+      bucket.description = description
+      bucket.readAllowed = read
+      bucket.writeAllowed = write
+      bucket.contextFolder = contextFolder
+    }
+    ...
+```
+
+and in `App.vue` in the bucket editor:
+```
+<v-dialog v-model="showBucketEditorPopup" max-width="800px">
+
+    <v-card>
+      <v-card-title>Bucket Editor</v-card-title>
+      <v-card-text>
+        <v-text-field v-model="bucketToEdit.label" label="Label"></v-text-field>
+        <v-text-field v-model="bucketToEdit.bucketPAR" label="Pre Authenticated Request URL"
+          hint="enter the PAR for a Bucket in OCI Object Storage (with at least read and list objects privileges)"></v-text-field>
+
+        <v-text-field v-model="bucketToEdit.contextFolder" label="Context Folder"
+          hint="specify the context folder path in the bucket that should be used as context"></v-text-field>
+        <v-text-field v-model="bucketToEdit.description" label="Description"></v-text-field>
+        ...
+```        
+
+
+## Context Folder in a Shareable URL
+When the user creates a Shareable URL, they can include a cotext folder. Any user accessing OCI File Manager using that url will work in the context of that context folder and not be aware of the larger surroundings in the bucket.
+
+In this screenshot, the Shareable URL is created for bucket TwoDrive and it has the context folder *my-images/20240521-agile-gilde*. 
+
+![](images/share-with-contextfolder.png)
+
+The user making use of that Shareable URL will see this scope:
+![](images/in-scope-of-shareableurlwithcontextfolder.png)
+
+In the *Share Panel* a context folder can be specified:
+```
+<v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">
+    <v-expansion-panel-text>
+      <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
+        label="Label"></v-text-field>
+      <v-text-field v-model="contextFolderForShare" default-value="" label="Context Folder"
+        hint="Optionally indicate a (nested) folder that this share should restrict access to"></v-text-field>
+...
+    </v-expansion-panel-text>
+  </v-expansion-panel>
+
+When the Shareable URL is constructed, the context folder is included:
+```
+const computedBucketShareURL = computed(() => {
+  if (!selectedBucket.value) return null
+  const shareableURLQueryParams = 'bucketPAR=' + selectedBucket.value.bucketPAR
+    + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
+    + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
+    + '&contextFolder=' + encodeURIComponent(selectedBucket.value.contextFolder ? selectedBucket.value.contextFolder : '')
+    + encodeURIComponent((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : ''
+      + (contextFolderForShare.value ? contextFolderForShare.value : '')
+    )
+  const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + shareableURLQueryParams
+  return shareableURL
+})
+```
+
+When OCI File Manager starts from a Shareable URL, the context folder is applied:
+```
+onMounted(() => {
+  // inspect query params
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('bucketPAR')) {
+    // http://localhost:5173/oci-file-manager/?bucketPAR=https://objectstorage.us-ashburn-1.oraclecloud.com/p/3ZvD2n18VN6y/n/idtwlqf2hanz/b/website/o/&label=Walk&permissions=rw
+    const label = urlParams.get('label')
+    const bucketPAR = urlParams.get('bucketPAR')
+    const bucketName = extractBucketName(bucketPAR)
+    const permissions = urlParams.get('permissions') ?? "rw"
+    // read is true if permissions contains r
+    const readAllowed = permissions.includes('r')
+    // write is true if permissions contains w
+    const writeAllowed = permissions.includes('w')
+    const contextFolder = urlParams.get('contextFolder')
+    const bucket = filesStore.saveBucket(bucketName, bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
+    selectedBucket.value = bucket
+  }
+  ...
+```
 
 # Make the Shareable URL Less Readable
 
