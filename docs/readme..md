@@ -1020,6 +1020,76 @@ Anyone who scans this QR Code can subsequently access OCI File Manager in the co
 
 # Make the Shareable URL Less Readable
 
+The Shareable URL had plaintext query parameters for permissions and bucketPAR. The former could easily be manipulated and the latter could easily be used in a different context. I wanted these parameters be less readable/changeable. I do not claim that this implementation makes it secure - anyone who is a little versed in JavaScript can easily extract the bucketPAR and/or manipulate the query parameters. But at least there is somewhat of a barrier and the URL is a little cleaner as well.
+
+I make use of a simple base64 encoding and decoding process when the URL is created and when it is interpreted. The logic for encoding and decoding:
+```
+const encodeString = (input) => {
+  // Convert the string to base64
+  let encoded = btoa(input);
+  // Make the base64 string URL-safe
+  encoded = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return encoded;
+}
+
+const decodeString = (encoded) => {
+  // Revert the URL-safe base64 string back to a standard base64 string
+  let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+
+  // Pad the base64 string with '=' to make it valid
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+
+  // Decode the base64 string
+  const decoded = atob(base64);
+  // %2F should be replaced with / in the decoded string, and %20 with space
+  const d1 = decoded.replace(/%2F/g, '/').replace(/%20/g, ' ');
+
+  return d1;
+}
+```
+
+The encodeString is used when the Shareable URL is computed:
+```
+const computedBucketShareURL = computed(() => {
+  if (!selectedBucket.value) return null
+
+  const shareableURLQueryParams = encodeString('bucketPAR=' + selectedBucket.value.bucketPAR
+    + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
+    + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
+    + '&contextFolder=' + encodeURIComponent(selectedBucket.value.contextFolder ? selectedBucket.value.contextFolder : '')
+    + encodeURIComponent((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : ''
+      + (contextFolderForShare.value ? contextFolderForShare.value : '')
+    ))
+
+  const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + shareableURLQueryParams
+  return shareableURL
+})
+``` 
+
+and decodeString is used in `onMounted` when a query parameter called *shareableQueryParams* is found:
+```
+nMounted(() => {  
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('bucketPAR')) {
+    ...
+  }
+  if (urlParams.has('shareableQueryParams')) {
+    const shareableQueryParams = urlParams.get('shareableQueryParams')
+    const shareableURLQueryParams = decodeString(shareableQueryParams)
+    const shareableURLParts = shareableURLQueryParams.split('&')
+    const bucketPAR = shareableURLParts[0].split('=')[1]
+    const label = shareableURLParts[1].split('=')[1]
+    const permissions = shareableURLParts[2].split('=')[1]
+    const readAllowed = permissions.includes('r')
+    const writeAllowed = permissions.includes('w')
+    const contextFolder = shareableURLParts[3].split('=')[1]
+    const bucket = filesStore.saveBucket(extractBucketName(bucketPAR), bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
+    selectedBucket.value = bucket
+  }
+})
+```
 
 # Copy files to a target bucket and folder
 
