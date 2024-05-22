@@ -1324,6 +1324,68 @@ A change had to be made in the function submitBlob in store filesStore - to acce
 
 ```
 
+## Copy files to target in a single zip file
+
+When a set of files is copied to a target bucket, it may be convenient to not copy them as individual files but instead produce a single zip file that contains all the selected files. This functionality has been implemented in a few small steps.
+
+First the panel:
+```
+<v-expansion-panel title="Copy" collapse-icon="mdi-transfer" expand-icon="mdi-transfer"
+ v-if="selectedBucket?.readAllowed" @group:selected="copyPanelIsExpanded = $event.value">
+ <v-expansion-panel-text>
+   <v-select v-model="targetBucketForCopy" label="Target Bucket"
+     hint="Which bucket should files be copied to?" :items="filesStore.rememberedBuckets"
+     item-title="label" item-value="id" return-object></v-select>
+   <v-text-field v-model="targetFolderForCopy" label="Target Folder (optional)"
+     hint="optional folder path in target bucket to copy file(s) to - does not need to already exist"
+     class="ma-10 mt-2 mb-5"></v-text-field>
+   <v-checkbox v-model="copyMultipleFilesAsZip" label="Copy files as a single zipfile"
+     hint="Select multiple files and copy them as a single zip file"
+     class="ma-10 mt-2 mb-5"></v-checkbox>
+   <v-text-field v-model="nameOfCopyZipFile" label="Zip filename" class="ma-10 mt-2 mb-5"
+     v-if="copyMultipleFilesAsZip"></v-text-field>
+   <v-btn @click="copyfiles" prepend-icon="mdi-transfer" mt="30">Copy selected file(s)</v-btn>
+
+```
+The supporting variables:
+```
+const copyMultipleFilesAsZip = ref(false)
+const nameOfCopyZipFile = ref(null)
+
+```
+The logic to produce a zip file from the selected files:
+```
+const copyfiles = () => {
+  const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
+  uploadInProgress.value = true
+  progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: selectedFiles.length }
+  if (copyMultipleFilesAsZip.value) {
+    // create a single zip file from all selected files
+
+    const zip = new JSZip();
+    const promises = [];
+    selectedFiles.forEach(file => {
+      addFileToZip(promises, file, zip);
+    })
+    // only when all files have been added can we generate the zip; that is when all promises are resolved
+    // upload the single zip file - called nameOfCopyZipFile
+
+    Promise.all(promises)
+      .then(results => {
+        zip.generateAsync({ type: "blob" })
+          .then(function (content) {
+            filesStore.submitBlob(content, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
+              + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + nameOfCopyZipFile.value, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+
+          });
+      })
+  } else { // upload each file individually
+    const promises = []
+    selectedFiles.forEach(file => {
+      promises.push(new Promise((resolve, reject) => {
+    ... 
+```
+
 # Resources
 
 Code demonstrated in this article is in this GitHub Repository https://github.com/lucasjellema/oci-file-manager
