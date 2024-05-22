@@ -1122,6 +1122,7 @@ In the *Share Panel* a context folder can be specified:
 ...
     </v-expansion-panel-text>
   </v-expansion-panel>
+```  
 
 When the Shareable URL is constructed, the context folder is included:
 ```
