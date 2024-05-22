@@ -53,7 +53,8 @@ const copyfiles = () => {
   selectedFiles.forEach(file => {
     promises.push(new Promise((resolve, reject) => {
       filesStore.getFile(file).then(blob => {
-        filesStore.submitBlob(blob, (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
+        filesStore.submitBlob(blob, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
+          + (targetFolderForCopy.value ? targetFolderForCopy.value + '/' : '') + file, progressReport.value, targetBucketForCopy.value.bucketPAR, false)
       })
     }))
   })
