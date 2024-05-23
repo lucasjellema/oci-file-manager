@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.5'
+const version = '0.3.6'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -44,9 +44,7 @@ const nameOfCopyZipFile = ref(null)
 
 
 const copyfiles = () => {
-  console.log('copyfiles to bucket ' + targetBucketForCopy.value.label + ' and folder ' + targetFolderForCopy.value)
   const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
-
   uploadInProgress.value = true
   progressReport.value = { uploadCount: 0, uploadSize: 0, uploadErrorCount: 0, uploadErrors: [], totalToUpload: selectedFiles.length }
   if (copyMultipleFilesAsZip.value) {
@@ -62,7 +60,7 @@ const copyfiles = () => {
 
     Promise.all(promises)
       .then(results => {
-        // Generate the zip file and trigger download
+        // Generate the zip file and copy to target
         zip.generateAsync({ type: "blob" })
           .then(function (content) {
             filesStore.submitBlob(content, (targetBucketForCopy.value.contextFolder ? targetBucketForCopy.value.contextFolder + '/' : '')
@@ -118,15 +116,16 @@ const decodeString = (encoded) => {
 const computedBucketShareURL = computed(() => {
   if (!selectedBucket.value) return null
 
-  const shareableURLQueryParams = encodeString('bucketPAR=' + selectedBucket.value.bucketPAR
+  const shareableURLQueryParams = 'bucketPAR=' + selectedBucket.value.bucketPAR
     + '&label=' + encodeURIComponent(labelForShare.value ?? selectedBucket.value.label)
     + '&permissions=' + (selectedBucket.value.readAllowed && allowReadInShare.value ? 'r' : '') + (selectedBucket.value.writeAllowed && allowWriteInShare.value ? 'w' : '')
     + '&contextFolder=' + encodeURIComponent(selectedBucket.value.contextFolder ? selectedBucket.value.contextFolder : '')
-    + encodeURIComponent((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : ''
+    + encodeURIComponent(((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : '')
       + (contextFolderForShare.value ? contextFolderForShare.value : '')
-    ))
+    )
+  const encodedShareableURLQueryParams = encodeString(shareableURLQueryParams)
 
-  const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + shareableURLQueryParams
+  const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + encodedShareableURLQueryParams
   return shareableURL
 })
 
@@ -518,7 +517,6 @@ const expandNode = (node) => {
               <v-expansion-panel title="Copy" collapse-icon="mdi-transfer" expand-icon="mdi-transfer"
                 v-if="selectedBucket?.readAllowed" @group:selected="copyPanelIsExpanded = $event.value">
                 <v-expansion-panel-text>
-
                   <v-select v-model="targetBucketForCopy" label="Target Bucket"
                     hint="Which bucket should files be copied to?" :items="filesStore.rememberedBuckets"
                     item-title="label" item-value="id" return-object></v-select>
