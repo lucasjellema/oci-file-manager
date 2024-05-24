@@ -215,7 +215,7 @@ onMounted(() => {
     const shareableQueryParams = urlParams.get('shareableQueryParams')
     const shareableURLQueryParams = decodeString(shareableQueryParams)
 
-    console.log(`onMounted Shareable URL = `, shareableURLQueryParams)
+    console.log(`onMounted Shareable URL = `) //, shareableURLQueryParams)
 
     const shareableURLParts = shareableURLQueryParams.split('&')
     const bucketPAR = shareableURLParts[0].split('=')[1]
@@ -255,7 +255,7 @@ const generateQRCodeCodeForShareURL = (shareURL) => {
     type: 'image/jpeg',
     quality: 0.3,
     margin: 1,
-    scale: 5,
+    scale: 3,
     color: {
       dark: "#010599FF",
       light: "#FFFFFF"
