@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.6'
+const version = '0.3.7'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -123,6 +123,8 @@ const computedBucketShareURL = computed(() => {
     + encodeURIComponent(((selectedBucket.value.contextFolder && contextFolderForShare.value) ? '/' : '')
       + (contextFolderForShare.value ? contextFolderForShare.value : '')
     )
+  console.log(`Shareable URL = `, shareableURLQueryParams)
+
   const encodedShareableURLQueryParams = encodeString(shareableURLQueryParams)
 
   const shareableURL = window.location.origin + window.location.pathname + '?shareableQueryParams=' + encodedShareableURLQueryParams
@@ -212,6 +214,9 @@ onMounted(() => {
   if (urlParams.has('shareableQueryParams')) {
     const shareableQueryParams = urlParams.get('shareableQueryParams')
     const shareableURLQueryParams = decodeString(shareableQueryParams)
+
+    console.log(`onMounted Shareable URL = `, shareableURLQueryParams)
+
     const shareableURLParts = shareableURLQueryParams.split('&')
     const bucketPAR = shareableURLParts[0].split('=')[1]
     const label = shareableURLParts[1].split('=')[1]
@@ -219,6 +224,7 @@ onMounted(() => {
     const readAllowed = permissions.includes('r')
     const writeAllowed = permissions.includes('w')
     const contextFolder = shareableURLParts[3].split('=')[1]
+    console.log('bucketPAR', bucketPAR, 'label', label, 'permissions', permissions, 'readAllowed', readAllowed, 'writeAllowed', writeAllowed, 'contextFolder', contextFolder)
     const bucket = filesStore.saveBucket(extractBucketName(bucketPAR), bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
     selectedBucket.value = bucket
   }
