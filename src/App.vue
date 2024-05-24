@@ -428,8 +428,8 @@ const expandNode = (node) => {
       <v-container fluid>
         <v-row>
           <v-col cols="6">
-            <h2 v-if="selectedBucket">{{ bucketName + ' (' + selectedBucket?.label + ')'
-        + (!selectedBucket?.writeAllowed ? '(read only)' : '') }}</h2>
+            <h2 v-if="selectedBucket">{{ selectedBucket?.label
+        + (!selectedBucket?.writeAllowed && selectedBucket?.readAllowed ? '(read only)' : '') }}</h2>
             <v-container fluid v-if="selectedBucket">
               <v-row>
                 <v-col cols="6">
