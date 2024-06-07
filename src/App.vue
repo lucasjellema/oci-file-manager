@@ -42,6 +42,8 @@ const targetFolderForCopy = ref(null)
 const copyMultipleFilesAsZip = ref(false)
 const nameOfCopyZipFile = ref(null)
 
+const adminEnabled = ref(false) // when not enabled, user cannot change bucket and cannot do bucket management or share
+
 
 const copyfiles = () => {
   const selectedFiles = Object.keys(selectedKey.value).filter(key => !key.endsWith('-folder'))
@@ -195,6 +197,7 @@ const filesTree = computed(() => {
 })
 
 onMounted(() => {
+  adminEnabled.value = true
   // inspect query params
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('bucketPAR')) {
@@ -227,6 +230,7 @@ onMounted(() => {
     console.log('bucketPAR', bucketPAR, 'label', label, 'permissions', permissions, 'readAllowed', readAllowed, 'writeAllowed', writeAllowed, 'contextFolder', contextFolder)
     const bucket = filesStore.saveBucket(extractBucketName(bucketPAR), bucketPAR, label, 'created from URL query parameters', readAllowed, writeAllowed, null, contextFolder)
     selectedBucket.value = bucket
+    adminEnabled.value = false
   }
 })
 
@@ -521,7 +525,7 @@ const expandNode = (node) => {
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Copy" collapse-icon="mdi-transfer" expand-icon="mdi-transfer"
-                v-if="selectedBucket?.readAllowed" @group:selected="copyPanelIsExpanded = $event.value">
+                v-if="selectedBucket?.readAllowed && adminEnabled" @group:selected="copyPanelIsExpanded = $event.value">
                 <v-expansion-panel-text>
                   <v-select v-model="targetBucketForCopy" label="Target Bucket"
                     hint="Which bucket should files be copied to?" :items="filesStore.rememberedBuckets"
@@ -550,7 +554,8 @@ const expandNode = (node) => {
 
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share" v-if="selectedBucket">
+              <v-expansion-panel title="Share" collapse-icon="mdi-share" expand-icon="mdi-share"
+                v-if="selectedBucket && adminEnabled">
                 <v-expansion-panel-text>
                   <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
                     label="Label"></v-text-field>
@@ -572,7 +577,7 @@ const expandNode = (node) => {
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel title="Bucket Management" collapse-icon="mdi-pail-outline"
-                expand-icon="mdi-pail-outline">
+                expand-icon="mdi-pail-outline" v-if="adminEnabled">
                 <v-expansion-panel-text>
                   <v-data-table :headers="bucketHeaders" :items="filesStore.rememberedBuckets" item-key="bucketName"
                     class="elevation-1">
@@ -602,7 +607,7 @@ const expandNode = (node) => {
 
           </v-col>
         </v-row>
-        <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail>
+        <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail v-if="adminEnabled">
           <v-img src="mdi-folder-outline"></v-img>
           <v-icon large>
             mdi-pail-outline
