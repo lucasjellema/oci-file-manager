@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.7'
+const version = '0.3.8'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -330,19 +330,43 @@ const downloadZipfile = () => {
 }
 
 
-const addFileToZip = (promises, file, zip) => {
+const addFileToZip = (promises, file, zip, commonPrefixToStripOff) => {
   promises.push(new Promise((resolve, reject) => {
     filesStore.getFile(file).then(blob => {
-      zip.file(file, blob);
+      // filename should be relative to the common prefix
+      const filename = file.replace(commonPrefixToStripOff, '')
+      console.log('filename to add in zip', filename)
+      zip.file(filename, blob);
       resolve();
     })
   }));
 }
+
+const longestCommonPrefix = (arr) => {
+  if (arr.length === 0) return "";
+  let prefix = arr[0];
+  for (let i = 1; i < arr.length; i++) {
+    while (arr[i].indexOf(prefix) !== 0) {
+      prefix = prefix.substring(0, prefix.length - 1);
+      if (prefix === "") return "";
+    }
+  }
+  return prefix;
+}
+
+
 const exportFilesToZip = (files, zipname) => {
   const zip = new JSZip();
   const promises = [];
+  // find out the common prefix for all files - the part of their name that they all start with
+  // remove the part after the last /
+  const commonPrefix = longestCommonPrefix(files);
+  const commonFolderPath = commonPrefix.substring(0, commonPrefix.lastIndexOf('/') + 1)
+
+  console.log('commonPrefix', commonPrefix)
+  console.log('commonFolderPath', commonFolderPath)
   files.forEach(file => {
-    addFileToZip(promises, file, zip);
+    addFileToZip(promises, file, zip, commonFolderPath);
   })
   // only when all files have been added can we generate the zip; that is when all promises are resolved
 
