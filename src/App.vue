@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.8'
+const version = '0.3.9'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -583,8 +583,11 @@ const expandNode = (node) => {
                 <v-expansion-panel-text>
                   <v-text-field v-model="labelForShare" default-value="selectedBucket?.label"
                     label="Label"></v-text-field>
-                  <v-text-field v-model="contextFolderForShare" default-value="" label="Context Folder"
-                    hint="Optionally indicate a (nested) folder that this share should restrict access to"></v-text-field>
+                  <v-select v-model="contextFolderForShare" :items="filesStore.foldersInBucket" label="Folder to share"
+                    hint="Optionally indicate a (nested) folder that this share should restrict access to"
+                    append-icon="mdi-folder-star-outline" persistent-hint class="">
+                  </v-select>
+
                   <v-checkbox v-model="allowReadInShare" label="Allow Read Access"
                     v-if="selectedBucket?.readAllowed"></v-checkbox>
                   <v-checkbox v-model="allowWriteInShare" label="Allow Write Access"
