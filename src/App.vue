@@ -35,6 +35,7 @@ const allowWriteInShare = ref(true)
 const labelForShare = ref(null)
 const contextFolderForShare = ref(null)
 const downloadMultipleFilesAsZip = ref(false)
+const flattenFoldersInDownload = ref(false)
 
 const copyPanelIsExpanded = ref(false)
 const targetBucketForCopy = ref(null)
@@ -330,11 +331,12 @@ const downloadZipfile = () => {
 }
 
 
-const addFileToZip = (promises, file, zip, commonPrefixToStripOff) => {
+const addFileToZip = (promises, file, zip, commonPrefixToStripOff, flattenFolders) => {
   promises.push(new Promise((resolve, reject) => {
     filesStore.getFile(file).then(blob => {
-      // filename should be relative to the common prefix
-      const filename = file.replace(commonPrefixToStripOff, '')
+      // filename from last / onwards
+
+      const filename = flattenFolders ? file.substring(file.lastIndexOf('/') + 1) : file.replace(commonPrefixToStripOff, '')
       console.log('filename to add in zip', filename)
       zip.file(filename, blob);
       resolve();
@@ -363,10 +365,8 @@ const exportFilesToZip = (files, zipname) => {
   const commonPrefix = longestCommonPrefix(files);
   const commonFolderPath = commonPrefix.substring(0, commonPrefix.lastIndexOf('/') + 1)
 
-  console.log('commonPrefix', commonPrefix)
-  console.log('commonFolderPath', commonFolderPath)
   files.forEach(file => {
-    addFileToZip(promises, file, zip, commonFolderPath);
+    addFileToZip(promises, file, zip, commonFolderPath, flattenFoldersInDownload.value);
   })
   // only when all files have been added can we generate the zip; that is when all promises are resolved
 
@@ -542,6 +542,9 @@ const expandNode = (node) => {
                     label="Allow multiple file download as single zipfile"
                     hint="Select multiple files and download them as a single zip file"
                     class="ma-10 mt-2 mb-5"></v-checkbox>
+                  <v-checkbox v-model="flattenFoldersInDownload" label="Flatten folders in download"
+                    hint="Should all files be collapsed into one set without folder structure in download?"
+                    class="ma-10 mt-2 mb-5" v-if="downloadMultipleFilesAsZip"></v-checkbox>
                   <v-text-field v-model="nameOfDownloadZipFile" label="Zip filename"
                     class="ma-10 mt-2 mb-5"></v-text-field>
                   <v-btn @click="downloadZipfile" prepend-icon="mdi-download-box" mt="30">Download selected file(s) as
