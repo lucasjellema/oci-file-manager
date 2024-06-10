@@ -521,7 +521,6 @@ const expandNode = (node) => {
                   </v-combobox>
                   <v-btn @click="submitData" prepend-icon="mdi-upload-box" mt="30">Send file(s) to Bucket</v-btn>
 
-                  <v-img src="mdi-folder-outline"></v-img>
                   <div v-if="uploadInProgress" class="text-center mt-5">
                     <v-icon icon="mdi-progress-upload"></v-icon>
                     {{ progressReport.uploadCount }} / {{ progressReport.totalToUpload }} files uploaded,
@@ -638,7 +637,6 @@ const expandNode = (node) => {
           </v-col>
         </v-row>
         <v-navigation-drawer location="right" width="700" rail-width="150" expand-on-hover rail v-if="adminEnabled">
-          <v-img src="mdi-folder-outline"></v-img>
           <v-icon large>
             mdi-pail-outline
           </v-icon>
