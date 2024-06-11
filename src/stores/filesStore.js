@@ -56,7 +56,7 @@ export const useFilesStore = defineStore('filesStore', () => {
       .then(response => response.json())
       .then(data => {
         //    //  bucketContents.value = data.objects.filter(object => object.name.startsWith(  '/'))
-        const limitedScope = (bucketContextFolder.value != null)
+        const limitedScope = (bucketContextFolder.value != null && bucketContextFolder.value.length > 0)
         const context = bucketContextFolder.value + '/'
         // map objects: remove string context from object.name
 
