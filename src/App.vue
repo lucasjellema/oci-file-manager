@@ -1,6 +1,6 @@
 <script setup>
 
-const version = '0.3.9'
+const version = '0.3.10'
 import { onMounted, computed, ref, watch } from 'vue';
 import { useFilesStore } from "./stores/filesStore";
 
@@ -449,7 +449,7 @@ const expandNode = (node) => {
     <v-app-bar app>
       <v-toolbar-title>OCI File Manager (aka The Bucket Browser) v{{ version }}
       </v-toolbar-title>
-      <v-img src="/app-bar-background-conclusion.jpg" height="80"></v-img>
+      <v-img src="/oci-file-manager/app-bar-background-conclusion.jpg" height="80"></v-img>
 
     </v-app-bar>
     <v-main>
